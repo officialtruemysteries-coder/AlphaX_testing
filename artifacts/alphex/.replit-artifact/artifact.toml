@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "ALPHEX Gaming Hub"
+version = "1.0.0"
+id = "artifacts/alphex"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19883
+
+[services.development]
+run = "pnpm --filter @workspace/alphex run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/alphex", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/alphex/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19883"
+BASE_PATH = "/"

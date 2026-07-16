@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --font-sans: var(--font-sans-app);
+  --font-display: var(--font-display-app);
+  --font-mono: var(--font-mono-app);
+}
+
+:root, .dark {
+  --background: 228 18% 5%;
+  --foreground: 0 0% 100%;
+  --card: 213 24% 16%;
+  --card-foreground: 0 0% 100%;
+  --border: 213 24% 25%;
+  --primary: 168 100% 50%;
+  --primary-foreground: 228 18% 5%;
+  --secondary: 271 76% 53%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 213 24% 20%;
+  --muted-foreground: 210 20% 75%;
+  --ring: 168 100% 50%;
+  --radius: 0.5rem;
+
+  --font-sans-app: 'Rajdhani', sans-serif;
+  --font-display-app: 'Orbitron', sans-serif;
+  --font-mono-app: 'Share Tech Mono', monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer utilities {
+  .text-shadow-neon-cyan {
+    text-shadow: 0 0 5px hsl(168 100% 50% / 0.5), 0 0 10px hsl(168 100% 50% / 0.3);
+  }
+  .box-shadow-neon-cyan {
+    box-shadow: 0 0 5px hsl(168 100% 50% / 0.5), 0 0 15px hsl(168 100% 50% / 0.3);
+  }
+  .glassmorphism {
+    @apply bg-card/60 backdrop-blur-[12px];
+  }
+}
+
+@keyframes neonPulse {
+  0%, 100% { 
+    border-color: hsl(168 100% 50% / 0.5); 
+    box-shadow: 0 0 8px hsl(168 100% 50% / 0.3); 
+  }
+  50% { 
+    border-color: hsl(271 76% 53% / 0.8); 
+    box-shadow: 0 0 20px hsl(271 76% 53% / 0.6); 
+  }
+}
+
+.animate-neon-pulse {
+  animation: neonPulse 3s infinite;
+}
+
+@keyframes spinnerRotate {
+  0% { transform: rotate(0deg); border-color: transparent hsl(168 100% 50%) transparent hsl(168 100% 50%); }
+  50% { border-color: transparent hsl(271 76% 53%) transparent hsl(271 76% 53%); }
+  100% { transform: rotate(360deg); border-color: transparent hsl(168 100% 50%) transparent hsl(168 100% 50%); }
+}
+
+.neon-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid;
+  animation: spinnerRotate 1.5s linear infinite;
+  box-shadow: 0 0 15px hsl(168 100% 50% / 0.5);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.animate-blink {
+  animation: blink 2s infinite;
+}

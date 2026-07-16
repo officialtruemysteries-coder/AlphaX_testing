@@ -22,9 +22,9 @@ export function Navbar() {
           {/* Left: Logo */}
           <Link href="/" className="flex items-center">
             <img 
-              src="/assets/images/corner.logo.png" 
+              src="/assets/images/corner.logo2.png" 
               alt="ALPHEX AX Icon" 
-              className="h-10 w-auto hover:brightness-125 transition-all"
+              className="h-10 w-auto hover:brightness-125 transition-all drop-shadow-[0_0_8px_rgba(0,255,204,0.4)]"
             />
           </Link>
 

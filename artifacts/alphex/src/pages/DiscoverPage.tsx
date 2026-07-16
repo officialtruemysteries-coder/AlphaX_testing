@@ -28,7 +28,7 @@ export default function DiscoverPage() {
           className="text-center mb-10"
         >
           <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-4 uppercase tracking-wider text-shadow-neon-cyan">
-            Explore Catalog
+            Discover & Play
           </h1>
           <div className="h-1 w-24 mx-auto bg-gradient-to-r from-transparent via-primary to-transparent rounded-full opacity-50" />
         </motion.div>

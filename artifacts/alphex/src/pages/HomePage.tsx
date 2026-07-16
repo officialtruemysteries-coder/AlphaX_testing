@@ -15,30 +15,20 @@ export default function HomePage() {
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          src="/assets/images/center.full.logo.png" 
+          src="/assets/images/center.logo2.png" 
           alt="ALPHEX Full Branding" 
-          className="w-full max-w-[300px] h-auto mb-8 drop-shadow-[0_0_15px_rgba(0,255,204,0.2)]"
+          className="w-full max-w-[320px] h-auto mb-8 drop-shadow-[0_0_30px_rgba(0,255,204,0.25)]"
         />
-
-        {/* Development Badge */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-          className="mb-8 px-4 py-1.5 border border-primary text-primary text-xs font-display tracking-[0.2em] rounded-full animate-neon-pulse uppercase bg-primary/5"
-        >
-          Development Phase
-        </motion.div>
 
         {/* Text content */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
           className="max-w-2xl mx-auto space-y-6 mb-12"
         >
           <h1 className="text-3xl md:text-5xl font-display font-bold text-white text-shadow-neon-cyan leading-tight">
-            The Future of Gaming & Apps is Loading...
+            Welcome to ALPHEX
           </h1>
           <p className="text-lg text-muted-foreground font-sans max-w-xl mx-auto">
             ALPHEX is building the ultimate hub. Be the first to explore what's coming.
@@ -56,7 +46,7 @@ export default function HomePage() {
             className="group relative inline-flex items-center justify-center px-8 py-4 font-display font-bold text-lg tracking-widest uppercase text-background bg-gradient-to-r from-primary to-[#00ccaa] rounded-md overflow-hidden transition-all hover:scale-105 box-shadow-neon-cyan"
           >
             <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full -translate-x-full transition-transform duration-500 ease-out skew-x-12" />
-            <span className="relative z-10">Explore Catalog</span>
+            <span className="relative z-10">Start Playing</span>
           </Link>
         </motion.div>
 

@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
-import { LiveStatsPanel } from '../components/LiveStatsPanel';
 
 export default function HomePage() {
   return (
@@ -31,7 +30,7 @@ export default function HomePage() {
             Welcome to ALPHEX
           </h1>
           <p className="text-lg text-muted-foreground font-sans max-w-xl mx-auto">
-            ALPHEX is building the ultimate hub. Be the first to explore what's coming.
+            Tap &amp; Play. No Downloads Required.
           </p>
         </motion.div>
 
@@ -50,28 +49,6 @@ export default function HomePage() {
           </Link>
         </motion.div>
 
-        {/* Live Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9, duration: 0.6 }}
-          className="w-full mt-8"
-        >
-          <LiveStatsPanel />
-        </motion.div>
-
-        {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 1 }}
-          className="mt-16 flex flex-col items-center gap-2 text-muted-foreground/50 animate-bounce"
-        >
-          <span className="text-xs font-mono uppercase tracking-widest">Scroll to discover</span>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 5v14M19 12l-7 7-7-7"/>
-          </svg>
-        </motion.div>
       </div>
     </div>
   );

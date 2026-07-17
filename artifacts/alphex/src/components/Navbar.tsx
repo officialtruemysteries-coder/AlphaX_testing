@@ -54,7 +54,7 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-2 bg-black/40 border border-border rounded-full px-4 py-1.5">
             <div className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_5px_rgba(74,222,128,0.8)] animate-pulse" />
             <span className="text-xs font-mono text-muted-foreground">
-              <span className="text-white font-bold">{activeUsers}</span> ONLINE
+              <span className="text-white font-bold">{activeUsers}</span> {activeUsers === 1 ? 'PLAYER' : 'PLAYERS'} ONLINE
             </span>
           </div>
 
@@ -101,7 +101,7 @@ export function Navbar() {
               <div className="mt-4 flex items-center justify-center gap-2 bg-black/40 border border-border rounded-lg px-4 py-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_5px_rgba(74,222,128,0.8)] animate-pulse" />
                 <span className="text-sm font-mono text-muted-foreground">
-                  <span className="text-white font-bold">{activeUsers}</span> USERS ONLINE
+                  <span className="text-white font-bold">{activeUsers}</span> {activeUsers === 1 ? 'PLAYER' : 'PLAYERS'} ONLINE
                 </span>
               </div>
             </div>

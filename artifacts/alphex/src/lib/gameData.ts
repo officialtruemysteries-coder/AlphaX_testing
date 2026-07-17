@@ -1,4 +1,4 @@
-export type GameCategory = "All Games" | "Multiplayer" | "Single Player" | "Shooting" | "Action" | "Puzzle" | "Arcade" | "Racing" | "Sports" | "Strategy" | "Apps" | "Co-op";
+export type GameCategory = "All Games" | "Multiplayer" | "Single Player" | "Shooting" | "Action" | "Puzzle" | "Arcade" | "Racing" | "Sports" | "Strategy" | "Apps" | "Pass & Play";
 
 export interface Game {
   id: string;
@@ -10,7 +10,7 @@ export interface Game {
 
 export const CATEGORIES: GameCategory[] = [
   "All Games", "Multiplayer", "Single Player", "Shooting", "Action",
-  "Puzzle", "Arcade", "Racing", "Sports", "Strategy", "Apps", "Co-op"
+  "Puzzle", "Arcade", "Racing", "Sports", "Strategy", "Apps", "Pass & Play"
 ];
 
 export const GAMES: Game[] = [
@@ -26,5 +26,5 @@ export const GAMES: Game[] = [
   { id: "10", title: "SkyDrift Legends", categories: ["Racing", "Sports"], expectedQuarter: "Q3 2026" },
   { id: "11", title: "ALPHEX Command Center", categories: ["Apps"], expectedQuarter: "Q3 2026", isApp: true },
   { id: "12", title: "BioSync Companion", categories: ["Apps"], expectedQuarter: "Q3 2026", isApp: true },
-  { id: "13", title: "Pass & Play", categories: ["Co-op", "Multiplayer"], expectedQuarter: "Q3 2026" },
+  { id: "13", title: "Pass & Play", categories: ["Pass & Play", "Multiplayer"], expectedQuarter: "Q3 2026" },
 ];

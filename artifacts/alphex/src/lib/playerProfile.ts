@@ -312,12 +312,48 @@ export function awardVictoryBonus(): { xp: number; gained: number } { return { x
 export function applyDefeatResult(): { xp: number } { return { xp: readPlayerData().xp }; }
 
 // ─── Rank resolution ──────────────────────────────────────────────────────────
+//
+// Bracket membership (strict, non-overlapping, ascending):
+//   0 – 500        → 🥉 STARTER
+//   501 – 2,000    → 🧭 EXPLORER
+//   2,001 – 5,000  → 🐣 NOOB
+//   5,001 – 10,000 → ⚡ PRO
+//   10,001–20,000  → 🎯 SPECIALIST
+//   20,001–40,000  → 🔥 ADVANCED
+//   40,001–65,000  → 💎 MASTER
+//   65,001–90,000  → 👑 LEGEND
+//   90,001–100,000 → 🌌 ELITE LEGEND
+//
+// Rules enforced here:
+//  • Input XP is clamped to [0, XP_MAX] before any calculation.
+//  • Rank advances INSTANTLY when the XP value crosses a bracket boundary —
+//    there is no hysteresis, cooldown, or manual override for standard users.
+//  • bracketPercent is progress within the current bracket only (0–100%),
+//    NOT a fraction of the full 100 K cap.
+//  • Standard users have no code path to downgrade their rank; only the
+//    owner god-mode system (in ProfilePage) can override display rank.
 
 export function getRankForXP(xp: number): ResolvedRank {
-  const tier = RANK_TIERS.find(t => xp <= t.max) ?? RANK_TIERS[RANK_TIERS.length - 1];
-  const bracketPercent = xp >= XP_MAX
-    ? 100
-    : Math.min((Math.max(0, xp - tier.min) / (tier.max - tier.min)) * 100, 100);
+  // 1. Clamp to valid XP range so stale / corrupt storage never breaks the UI.
+  const clamped = Math.max(0, Math.min(xp, XP_MAX));
+
+  // 2. Walk tiers from lowest to highest — first tier whose max >= clamped wins.
+  //    The final tier (ELITE LEGEND, max = 100,000) catches everything at the cap.
+  let tier = RANK_TIERS[RANK_TIERS.length - 1];
+  for (const t of RANK_TIERS) {
+    if (clamped <= t.max) {
+      tier = t;
+      break;
+    }
+  }
+
+  // 3. Bracket-relative fill: 0% at tier.min, 100% at tier.max.
+  const bracketSize     = tier.max - tier.min;
+  const bracketProgress = Math.max(0, clamped - tier.min);
+  const bracketPercent  = bracketSize > 0
+    ? Math.min((bracketProgress / bracketSize) * 100, 100)
+    : 100; // degenerate guard (should never fire with current tiers)
+
   return { ...tier, bracketPercent };
 }
 

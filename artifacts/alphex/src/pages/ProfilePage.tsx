@@ -181,7 +181,7 @@ export default function ProfilePage() {
           )}
 
           {/* Main flex row — items-start so both columns anchor from the top */}
-          <div className="flex flex-col md:flex-row md:items-start gap-6 relative z-10">
+          <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-6 relative z-10">
 
             {/* ── Avatar column ── */}
             <div className="flex flex-col items-center gap-2 flex-shrink-0">
@@ -241,7 +241,7 @@ export default function ProfilePage() {
                       <div className="text-[8px] font-mono text-yellow-400/60 uppercase tracking-widest text-center mb-2">
                         ⚙ GOD MODE — SELECT RANK
                       </div>
-                      <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+                      <div className="flex flex-col gap-1 overflow-y-auto">
                         {RANK_TIERS.map(tier => {
                           const isActive = rank.name === tier.name;
                           return (
@@ -279,7 +279,7 @@ export default function ProfilePage() {
             <div className="flex-1 text-center md:text-left min-w-0">
 
               {/* Username row */}
-              <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+              <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
                 {isEditing ? (
                   <div className="flex items-center gap-2">
                     <input
@@ -322,7 +322,7 @@ export default function ProfilePage() {
                       src={BADGE_DEFS[equippedId].img}
                       alt={BADGE_DEFS[equippedId].name}
                       style={{ width: 30, height: 30 }}
-                      className="object-contain flex-shrink-0"
+                      className="badge-img flex-shrink-0"
                     />
                     <span className="font-display text-sm text-primary tracking-widest uppercase leading-none">
                       {BADGE_DEFS[equippedId].name}
@@ -358,7 +358,7 @@ export default function ProfilePage() {
                                     : 'border-border bg-card/50 hover:border-primary/50'
                                 }`}
                               >
-                                <img src={def.img} alt={def.name} style={{ width: 30, height: 30 }} className="object-contain" />
+                                <img src={def.img} alt={def.name} style={{ width: 30, height: 30 }} className="badge-img" />
                                 <span className="font-mono text-[9px] text-muted-foreground uppercase whitespace-nowrap">{def.name}</span>
                               </button>
                             );
@@ -476,7 +476,7 @@ export default function ProfilePage() {
                           src={def.img}
                           alt={def.name}
                           style={{ width: 30, height: 30 }}
-                          className={`object-contain ${owned ? '' : 'grayscale opacity-40'}`}
+                          className={`badge-img ${owned ? '' : 'grayscale opacity-40'}`}
                         />
                       </div>
                       <div className="flex-1 min-w-0">

@@ -65,6 +65,15 @@
   .glassmorphism {
     @apply bg-card/60 backdrop-blur-[12px];
   }
+  /* Badge images — forces hardware-crisp pixel rendering on all viewports */
+  .badge-img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    object-fit: contain;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
 }
 
 @keyframes neonPulse {

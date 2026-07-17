@@ -40,6 +40,9 @@ function useLiveClock(): string {
   return t;
 }
 
+// ─── Reserved owner handles (standard users cannot claim these) ───────────────
+const RESERVED_HANDLES = ['ax-owner', 'player_001'];
+
 // ─── Equipped badge helper ────────────────────────────────────────────────────
 function getEffectiveEquipped(state: BadgeState): BadgeId | null {
   if (state.unlocked.length === 0) return null;
@@ -67,6 +70,13 @@ export default function ProfilePage() {
       refreshAll();
     }
   }, []);
+
+  // ── Toast notification
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3200);
+  };
 
   // ── Owner / god-mode
   const isOwner   = checkIsOwner(playerData.username);
@@ -119,8 +129,19 @@ export default function ProfilePage() {
   useEffect(() => { if (isEditing && inputRef.current) inputRef.current.focus(); }, [isEditing]);
 
   const handleSave = () => {
-    const t = editValue.trim();
-    if (t) { saveUsername(t); refreshAll(); } else setEditValue(playerData.username);
+    const t = editValue.trim().slice(0, 15); // hard cap at 15 chars
+    if (!t) { setEditValue(playerData.username); setIsEditing(false); return; }
+
+    // Reserved handle blacklist — non-owners cannot impersonate the developer
+    if (!isOwner && RESERVED_HANDLES.includes(t.toLowerCase())) {
+      showToast('Username Reserved — please choose a different name');
+      setEditValue(playerData.username);
+      setIsEditing(false);
+      return;
+    }
+
+    saveUsername(t);
+    refreshAll();
     setIsEditing(false);
   };
 
@@ -297,7 +318,10 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 group">
-                    <h2 className="text-3xl font-display font-bold text-white tracking-wide leading-tight">
+                    <h2
+                      className="font-display font-bold text-white tracking-wide leading-tight w-full text-center md:text-left break-words"
+                      style={{ fontSize: 'clamp(1.2rem, 4vw, 2rem)', margin: 0 }}
+                    >
                       {playerData.username}
                     </h2>
                     <button
@@ -318,12 +342,13 @@ export default function ProfilePage() {
                     className={`flex items-center gap-2 mx-auto md:mx-0 ${canSwap ? 'cursor-pointer' : 'cursor-default'}`}
                     aria-label={canSwap ? 'Switch equipped badge' : undefined}
                   >
-                    <img
-                      src={BADGE_DEFS[equippedId].img}
-                      alt={BADGE_DEFS[equippedId].name}
-                      style={{ width: 30, height: 30 }}
-                      className="badge-img flex-shrink-0"
-                    />
+                    <div className="badge-img-wrapper">
+                      <img
+                        src={BADGE_DEFS[equippedId].img}
+                        alt={BADGE_DEFS[equippedId].name}
+                        className="badge-img"
+                      />
+                    </div>
                     <span className="font-display text-sm text-primary tracking-widest uppercase leading-none">
                       {BADGE_DEFS[equippedId].name}
                     </span>
@@ -358,7 +383,9 @@ export default function ProfilePage() {
                                     : 'border-border bg-card/50 hover:border-primary/50'
                                 }`}
                               >
-                                <img src={def.img} alt={def.name} style={{ width: 30, height: 30 }} className="badge-img" />
+                                <div className="badge-img-wrapper">
+                                  <img src={def.img} alt={def.name} className="badge-img" />
+                                </div>
                                 <span className="font-mono text-[9px] text-muted-foreground uppercase whitespace-nowrap">{def.name}</span>
                               </button>
                             );
@@ -471,13 +498,14 @@ export default function ProfilePage() {
                       key={id}
                       className={`flex items-start gap-3 glassmorphism p-3 rounded-lg border transition-colors ${owned ? 'border-border' : 'border-border/40 opacity-60'}`}
                     >
-                      <div className="flex-shrink-0 w-[30px] h-[30px] mt-0.5">
-                        <img
-                          src={def.img}
-                          alt={def.name}
-                          style={{ width: 30, height: 30 }}
-                          className={`badge-img ${owned ? '' : 'grayscale opacity-40'}`}
-                        />
+                      <div className="mt-0.5">
+                        <div className={`badge-img-wrapper ${owned ? '' : 'opacity-40'}`}>
+                          <img
+                            src={def.img}
+                            alt={def.name}
+                            className={`badge-img ${owned ? '' : 'grayscale'}`}
+                          />
+                        </div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-display text-sm text-white uppercase">{def.name}</div>
@@ -506,6 +534,27 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ── Reserved-username toast ──────────────────────────────────────────── */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key="toast"
+            initial={{ opacity: 0, y: 32, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 32, scale: 0.95 }}
+            transition={{ duration: 0.22 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-xl
+                       bg-[#1a0a0a] border border-red-500/60 shadow-2xl
+                       font-mono text-xs text-red-400 tracking-widest uppercase
+                       flex items-center gap-2 whitespace-nowrap pointer-events-none"
+            style={{ boxShadow: '0 0 24px rgba(239,68,68,0.20)' }}
+          >
+            <span className="text-red-500 text-base leading-none">⚠</span>
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Admin verification modal (owner-only, portal-style overlay) ───── */}
       <AnimatePresence>

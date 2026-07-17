@@ -3,22 +3,30 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Single source of truth for the player's persistent identity and progression.
  *
- * STORAGE LAYOUT (all keys are independent — updating one never touches others)
- *   alphex-player-id    → stable UUID-like string, generated once, never reset
- *   alphex-player-data  → JSON blob: { username, avatar, xp, sessions, createdAt }
+ * STORAGE LAYOUT
+ *   alphex-player-id    → stable ID, generated once, never reset
+ *   alphex-player-data  → { username, avatar, xp, sessions, createdAt }
+ *   alphex-badges       → { unlocked: BadgeId[], equipped: BadgeId | null }
+ *   alphex-streak       → { lastDate: "YYYY-MM-DD", days: number }
  *
- * XP SCALE:  cumulative 0 → 100,000 (hard cap; no resets, no wipes)
- * RANKS:     determined solely by cumulative XP
+ * XP SCALE:  cumulative 0 → 100,000 (hard cap, no resets)
  */
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface PlayerData {
   username: string;
-  avatar: string | null;   // Base64 data-URL or null
-  xp: number;              // cumulative, 0–100 000
-  sessions: number;        // lifetime session count
-  createdAt: number;       // epoch ms of first visit
+  avatar: string | null;
+  xp: number;
+  sessions: number;
+  createdAt: number;
+}
+
+export type BadgeId = 'earlyRiser' | 'sleepwalker' | 'perfectWeek';
+
+export interface BadgeState {
+  unlocked: BadgeId[];
+  equipped: BadgeId | null;
 }
 
 export interface RankTier {
@@ -28,11 +36,36 @@ export interface RankTier {
 }
 
 export interface ResolvedRank extends RankTier {
-  /** 0–100: how far through the current bracket the player is */
   bracketPercent: number;
 }
 
-// ─── Rank table ──────────────────────────────────────────────────────────────
+// ─── Badge definitions (image paths, names, descriptions) ─────────────────────
+
+export const BADGE_DEFS: Record<BadgeId, { id: BadgeId; name: string; img: string; description: string }> = {
+  perfectWeek: {
+    id: 'perfectWeek',
+    name: 'PERFECT WEEK',
+    img: 'assets/badges/perfect_week.png',
+    description: 'Play any game or app daily for 7 days in a row!',
+  },
+  sleepwalker: {
+    id: 'sleepwalker',
+    name: 'SLEEPWALKER',
+    img: 'assets/badges/sleepwalker.png',
+    description: 'Play any game or app after 10:00 PM!',
+  },
+  earlyRiser: {
+    id: 'earlyRiser',
+    name: 'EARLY RISER',
+    img: 'assets/badges/early_riser.png',
+    description: 'Play any game or app before 9:00 AM!',
+  },
+};
+
+/** Ordered list used when rendering badge panels */
+export const BADGE_ORDER: BadgeId[] = ['perfectWeek', 'sleepwalker', 'earlyRiser'];
+
+// ─── Rank table ───────────────────────────────────────────────────────────────
 
 export const RANK_TIERS: RankTier[] = [
   { name: 'STARTER',      min: 0,      max: 500    },
@@ -48,7 +81,7 @@ export const RANK_TIERS: RankTier[] = [
 
 export const XP_MAX = 100_000;
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Internal helpers ─────────────────────────────────────────────────────────
 
 function randInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -63,17 +96,19 @@ function generateDefaultUsername(): string {
   return `PLAYER_${randInt(100, 999)}`;
 }
 
+function dateKey(d: Date): string {
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD UTC
+}
+
 // ─── Storage keys ─────────────────────────────────────────────────────────────
 
-const ID_KEY   = 'alphex-player-id';
-const DATA_KEY = 'alphex-player-data';
+const ID_KEY     = 'alphex-player-id';
+const DATA_KEY   = 'alphex-player-data';
+const BADGE_KEY  = 'alphex-badges';
+const STREAK_KEY = 'alphex-streak';
 
-// ─── Core ID (immutable once set) ────────────────────────────────────────────
+// ─── Core player ID ───────────────────────────────────────────────────────────
 
-/**
- * Returns the player's permanent ID, creating it on first call.
- * Call as many times as you like — it always returns the same value.
- */
 export function getOrCreatePlayerId(): string {
   let id = localStorage.getItem(ID_KEY);
   if (!id) {
@@ -86,42 +121,36 @@ export function getOrCreatePlayerId(): string {
 // ─── Player data ──────────────────────────────────────────────────────────────
 
 function buildDefaultData(): PlayerData {
-  // One-time migration: carry over any username/XP set by the old key scheme
   let username = generateDefaultUsername();
   let xp = 0;
-
   try {
-    const legacyUsername = localStorage.getItem('alphex-username');
-    if (legacyUsername) username = JSON.parse(legacyUsername);
+    const legacyName = localStorage.getItem('alphex-username');
+    if (legacyName) username = JSON.parse(legacyName);
   } catch { /* ignore */ }
-
   try {
     const legacyXP = parseInt(localStorage.getItem('alphex-xp') ?? '0', 10);
     if (!isNaN(legacyXP) && legacyXP > 0) xp = Math.min(legacyXP, XP_MAX);
   } catch { /* ignore */ }
-
   return { username, avatar: null, xp, sessions: 1, createdAt: Date.now() };
 }
 
 export function readPlayerData(): PlayerData {
-  getOrCreatePlayerId(); // ensure ID exists
+  getOrCreatePlayerId();
   try {
     const raw = localStorage.getItem(DATA_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<PlayerData>;
-      const defaults = buildDefaultData();
-      // Merge: stored values win, defaults fill missing fields
+      const p = JSON.parse(raw) as Partial<PlayerData>;
+      const d = buildDefaultData();
       return {
-        username:  typeof parsed.username  === 'string'  ? parsed.username  : defaults.username,
-        avatar:    parsed.avatar != null                  ? parsed.avatar    : null,
-        xp:        typeof parsed.xp        === 'number'  ? Math.min(parsed.xp, XP_MAX) : defaults.xp,
-        sessions:  typeof parsed.sessions  === 'number'  ? parsed.sessions  : defaults.sessions,
-        createdAt: typeof parsed.createdAt === 'number'  ? parsed.createdAt : defaults.createdAt,
+        username:  typeof p.username  === 'string' ? p.username  : d.username,
+        avatar:    p.avatar != null                ? p.avatar    : null,
+        xp:        typeof p.xp        === 'number' ? Math.min(p.xp, XP_MAX) : d.xp,
+        sessions:  typeof p.sessions  === 'number' ? p.sessions  : d.sessions,
+        createdAt: typeof p.createdAt === 'number' ? p.createdAt : d.createdAt,
       };
     }
   } catch { /* ignore */ }
   const fresh = buildDefaultData();
-  // Persist immediately so subsequent reads are consistent
   localStorage.setItem(DATA_KEY, JSON.stringify(fresh));
   return fresh;
 }
@@ -130,10 +159,6 @@ function writePlayerData(data: PlayerData): void {
   getOrCreatePlayerId();
   localStorage.setItem(DATA_KEY, JSON.stringify(data));
 }
-
-// ─── Selective field writers ──────────────────────────────────────────────────
-// Each one reads → patches one field → writes. XP/sessions/etc are never touched
-// by username or avatar saves.
 
 export function saveUsername(name: string): void {
   const data = readPlayerData();
@@ -153,44 +178,143 @@ export function incrementSession(): void {
   writePlayerData(data);
 }
 
-// ─── XP functions ─────────────────────────────────────────────────────────────
+// ─── Badge state ──────────────────────────────────────────────────────────────
 
-/**
- * Awards 10–30 XP for launching/trying a game or app.
- * XP is cumulative and caps at XP_MAX (100 000). No resets.
- */
-export function awardGameTryXP(): { xp: number; gained: number } {
-  const data = readPlayerData();
-  const gained = randInt(10, 30);
-  data.xp = Math.min(data.xp + gained, XP_MAX);
-  writePlayerData(data);
-  return { xp: data.xp, gained };
+export function readBadges(): BadgeState {
+  try {
+    const raw = localStorage.getItem(BADGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<BadgeState>;
+      return {
+        unlocked: Array.isArray(parsed.unlocked) ? parsed.unlocked : [],
+        equipped: parsed.equipped ?? null,
+      };
+    }
+  } catch { /* ignore */ }
+  return { unlocked: [], equipped: null };
 }
 
+function writeBadges(state: BadgeState): void {
+  localStorage.setItem(BADGE_KEY, JSON.stringify(state));
+}
+
+/** Unlocks a badge if not already unlocked. Auto-equips when it's the first badge. */
+function tryUnlockBadge(id: BadgeId): BadgeId[] {
+  const state = readBadges();
+  if (state.unlocked.includes(id)) return [];
+  state.unlocked.push(id);
+  if (!state.equipped) state.equipped = id;
+  writeBadges(state);
+  return [id];
+}
+
+export function equipBadge(id: BadgeId): void {
+  const state = readBadges();
+  if (state.unlocked.includes(id)) {
+    state.equipped = id;
+    writeBadges(state);
+  }
+}
+
+// ─── Streak tracking ──────────────────────────────────────────────────────────
+
+interface StreakData {
+  lastDate: string;
+  days: number;
+}
+
+function updateStreak(now: Date): BadgeId[] {
+  const today = dateKey(now);
+  let streak: StreakData = { lastDate: '', days: 0 };
+  try {
+    const raw = localStorage.getItem(STREAK_KEY);
+    if (raw) streak = JSON.parse(raw);
+  } catch { /* ignore */ }
+
+  if (streak.lastDate === today) return []; // already counted today
+
+  const yesterday = new Date(now);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+
+  if (streak.lastDate === dateKey(yesterday)) {
+    streak.days += 1;
+  } else {
+    streak.days = 1; // chain broken — restart at 1
+  }
+  streak.lastDate = today;
+  localStorage.setItem(STREAK_KEY, JSON.stringify(streak));
+
+  if (streak.days >= 7) return tryUnlockBadge('perfectWeek');
+  return [];
+}
+
+/** Returns current streak progress (days, target 7) for UI display. */
+export function readStreak(): { days: number; lastDate: string } {
+  try {
+    const raw = localStorage.getItem(STREAK_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return { days: 0, lastDate: '' };
+}
+
+// ─── Session XP award (main entry point) ─────────────────────────────────────
+
 /**
- * Awards +90 XP for winning. Call in addition to awardGameTryXP on victory.
+ * Awards 10–25 XP whenever a player completes any game/app session.
+ * sessionSeconds is passed internally by the session timer — it adjusts the
+ * probability weight toward the upper range for longer engagements.
+ * This weight logic is intentionally not reflected in any UI string.
+ *
+ * Also runs all time-based and streak-based badge unlock checks.
+ * Returns { xp, gained, newBadges }.
  */
+export function awardSessionXP(sessionSeconds?: number): { xp: number; gained: number; newBadges: BadgeId[] } {
+  const data = readPlayerData();
+
+  // Internal retention weight modifier — not shown in UI
+  let gained: number;
+  if (sessionSeconds !== undefined && sessionSeconds > 120) {
+    // 50–70 % probability to land in the 15–25 XP tier
+    const highChance = 0.50 + Math.random() * 0.20;
+    gained = Math.random() < highChance ? randInt(15, 25) : randInt(10, 14);
+  } else {
+    gained = randInt(10, 25);
+  }
+
+  data.xp = Math.min(data.xp + gained, XP_MAX);
+  writePlayerData(data);
+
+  // Time-based badge unlocks
+  const now    = new Date();
+  const hour   = now.getHours();
+  const newBadges: BadgeId[] = [];
+
+  if (hour < 9)  newBadges.push(...tryUnlockBadge('earlyRiser'));
+  if (hour >= 22) newBadges.push(...tryUnlockBadge('sleepwalker'));
+
+  // Streak / perfect week
+  newBadges.push(...updateStreak(now));
+
+  return { xp: data.xp, gained, newBadges };
+}
+
+/** Backward-compatible alias — awardGameTryXP now calls awardSessionXP. */
+export function awardGameTryXP(sessionSeconds?: number): { xp: number; gained: number; newBadges?: BadgeId[] } {
+  return awardSessionXP(sessionSeconds);
+}
+
+/** Victory bonus is disabled. Kept as a no-op so existing callers don't break. */
 export function awardVictoryBonus(): { xp: number; gained: number } {
-  const data = readPlayerData();
-  const gained = 90;
-  data.xp = Math.min(data.xp + gained, XP_MAX);
-  writePlayerData(data);
-  return { xp: data.xp, gained };
+  return { xp: readPlayerData().xp, gained: 0 };
 }
 
-/**
- * Defeat: no victory bonus. Returns current state for callers to react to.
- */
+/** Defeat: no XP change. Returns current state. */
 export function applyDefeatResult(): { xp: number } {
   return { xp: readPlayerData().xp };
 }
 
 // ─── Rank resolution ──────────────────────────────────────────────────────────
 
-/**
- * Returns the rank tier the player is currently in, plus a bracketPercent
- * (0–100) showing how far they are through that tier's XP range.
- */
 export function getRankForXP(xp: number): ResolvedRank {
   const tier =
     RANK_TIERS.find(t => xp <= t.max) ??
@@ -200,9 +324,8 @@ export function getRankForXP(xp: number): ResolvedRank {
   if (xp >= XP_MAX) {
     bracketPercent = 100;
   } else {
-    const bracketRange = tier.max - tier.min;
-    const bracketXP    = Math.max(0, xp - tier.min);
-    bracketPercent     = Math.min((bracketXP / bracketRange) * 100, 100);
+    const range = tier.max - tier.min;
+    bracketPercent = Math.min((Math.max(0, xp - tier.min) / range) * 100, 100);
   }
 
   return { ...tier, bracketPercent };

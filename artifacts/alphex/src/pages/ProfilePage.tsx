@@ -1,27 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRecentlyVisited } from '../hooks/useRecentlyVisited';
-import { Terminal, Shield, Award, Zap, Edit2, Check, Clock, Radio, Camera } from 'lucide-react';
+import { Terminal, Shield, Award, Zap, Edit2, Check, Clock, Radio, Camera, ChevronDown } from 'lucide-react';
 import { Link } from 'wouter';
 
 import {
   readPlayerData,
+  readBadges,
+  equipBadge,
   saveUsername,
   saveAvatar,
   incrementSession,
   getRankForXP,
+  BADGE_DEFS,
+  BADGE_ORDER,
   type PlayerData,
+  type BadgeState,
+  type BadgeId,
 } from '../lib/playerProfile';
 
-// Re-export XP functions so external callers (game components, etc.) import from here
-export {
-  awardGameTryXP,
-  awardVictoryBonus,
-  applyDefeatResult,
-} from '../lib/playerProfile';
+// Re-export XP functions so external callers import from here
+export { awardSessionXP, awardGameTryXP, awardVictoryBonus, applyDefeatResult } from '../lib/playerProfile';
 
 // ─── Session flag ─────────────────────────────────────────────────────────────
-// Increments sessions exactly once per browser tab/session, not on every render.
 const SESSION_FLAG = 'alphex-session-counted';
 
 // ─── Live 12-hour clock hook ──────────────────────────────────────────────────
@@ -36,19 +37,31 @@ function useLiveClock(): string {
   return time;
 }
 
+// ─── Equipped badge helper ────────────────────────────────────────────────────
+function getEffectiveEquipped(state: BadgeState): BadgeId | null {
+  if (state.unlocked.length === 0) return null;
+  if (state.equipped && state.unlocked.includes(state.equipped)) return state.equipped;
+  return state.unlocked[0];
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { visited, totalVisits } = useRecentlyVisited();
   const liveTime = useLiveClock();
 
-  // ── Player data state (sourced from playerProfile — never wiped by username/avatar changes)
+  // ── Player data
   const [playerData, setPlayerData] = useState<PlayerData>(() => readPlayerData());
+  const [badgeState, setBadgeState] = useState<BadgeState>(() => readBadges());
 
-  // Refresh from localStorage on storage events (e.g. XP awarded from another component)
+  const refreshAll = () => {
+    setPlayerData(readPlayerData());
+    setBadgeState(readBadges());
+  };
+
+  // Sync from storage events (e.g. XP awarded by another component)
   useEffect(() => {
-    const sync = () => setPlayerData(readPlayerData());
-    window.addEventListener('storage', sync);
-    return () => window.removeEventListener('storage', sync);
+    window.addEventListener('storage', refreshAll);
+    return () => window.removeEventListener('storage', refreshAll);
   }, []);
 
   // Count this browser session exactly once
@@ -56,7 +69,7 @@ export default function ProfilePage() {
     if (!sessionStorage.getItem(SESSION_FLAG)) {
       sessionStorage.setItem(SESSION_FLAG, '1');
       incrementSession();
-      setPlayerData(readPlayerData());
+      refreshAll();
     }
   }, []);
 
@@ -64,50 +77,39 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(playerData.username);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isEditing && inputRef.current) inputRef.current.focus();
-  }, [isEditing]);
+  useEffect(() => { if (isEditing && inputRef.current) inputRef.current.focus(); }, [isEditing]);
 
   const handleSave = () => {
     const trimmed = editValue.trim();
-    if (trimmed) {
-      saveUsername(trimmed);          // only writes username — XP/sessions untouched
-      setPlayerData(readPlayerData());
-    } else {
-      setEditValue(playerData.username);
-    }
+    if (trimmed) { saveUsername(trimmed); refreshAll(); }
+    else setEditValue(playerData.username);
     setIsEditing(false);
   };
 
   // ── Avatar upload
   const avatarInputRef = useRef<HTMLInputElement>(null);
-
-  const handleAvatarClick = () => avatarInputRef.current?.click();
-
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result as string;
-      saveAvatar(base64);             // only writes avatar — XP/sessions untouched
-      setPlayerData(readPlayerData());
-    };
+    reader.onload = () => { saveAvatar(reader.result as string); refreshAll(); };
     reader.readAsDataURL(file);
-    // Reset input so the same file can be re-selected later
     e.target.value = '';
   };
 
-  // ── Rank & XP bar (bracket-relative fill)
-  const rank = getRankForXP(playerData.xp);
+  // ── Badge selector
+  const [showSelector, setShowSelector] = useState(false);
+  const equippedId = getEffectiveEquipped(badgeState);
+  const canSwap     = badgeState.unlocked.length >= 2;
 
-  // ── Badges (static — unlocked for all registered players)
-  const BADGES = [
-    { id: 'explorer', name: 'Explorer',    icon: <Terminal size={20} />, color: 'text-primary border-primary' },
-    { id: 'pioneer',  name: 'Pioneer',     icon: <Shield size={20} />,   color: 'text-secondary border-secondary' },
-    { id: 'beta',     name: 'Beta Tester', icon: <Award size={20} />,    color: 'text-yellow-400 border-yellow-400/50' },
-  ];
+  const handleEquip = (id: BadgeId) => {
+    equipBadge(id);
+    setBadgeState(readBadges());
+    setShowSelector(false);
+  };
+
+  // ── Rank & XP
+  const rank = getRankForXP(playerData.xp);
 
   return (
     <div className="min-h-[100dvh] pt-24 pb-16 px-4 bg-background">
@@ -123,8 +125,14 @@ export default function ProfilePage() {
 
           <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
 
-            {/* Avatar — clickable, shows uploaded image or SVG placeholder */}
-            <div className="relative flex-shrink-0">
+            {/* Avatar column — STATUS sits above the circle */}
+            <div className="flex flex-col items-center gap-3 flex-shrink-0">
+              {/* STATUS: ONLINE — now lives directly above the avatar */}
+              <div className="font-mono text-xs text-muted-foreground flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                STATUS: ONLINE
+              </div>
+
               {/* Hidden file input */}
               <input
                 ref={avatarInputRef}
@@ -134,8 +142,9 @@ export default function ProfilePage() {
                 onChange={handleAvatarChange}
               />
 
+              {/* Clickable avatar */}
               <button
-                onClick={handleAvatarClick}
+                onClick={() => avatarInputRef.current?.click()}
                 aria-label="Change profile picture"
                 className="group block w-24 h-24 rounded-full border-2 border-primary p-1 box-shadow-neon-cyan focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
@@ -149,22 +158,24 @@ export default function ProfilePage() {
                   ) : (
                     <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PHBhdGggZD0iTTAgMGg0MHY0MEgweiIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik0yMCAyOGMyLjIgMCA0LTEuOCA0LTRWMThjMC0yLjItMS44LTQtNC00cy00IDEuOC00IDR2NmMwIDIuMiAxLjggNCA0IDR6bTAtMTJjMS4xIDAgMiAuOSAyIDJ2NmMwIDEuMS0uOSAyLTIgMnMtMi0uOS0yLTJ2LTZjMC0xLjEuOS0yIDItMnoiIGZpbGw9IiMwMGZmY2MiLz48cGF0aCBkPSJNMjAgMTRjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTRzNCAxLjggNCA0LTEuOCA0LTQgNHptMC02Yy0xLjEgMC0yIC45LTIgMnMuOSAyIDIgMiAyLS45IDItMi0uOS0yLTItMnoiIGZpbGw9IiMwMGZmY2MiLz48cGF0aCBkPSJNMjggMjB2MmMwIDQuNC0zLjYgOC04IDhzLTgtMy42LTgtOHYtMmgtdjJjMCA1LjIgMy45IDkuNCA5IDEwaDJWMzZIMTR2MmgxMnYtMmgtNXYtLjRjNS4xLS42IDktNC44IDktMTB2LTJoLTJ6IiBmaWxsPSIjMDBmZmNjIi8+PC9zdmc+')] bg-center bg-no-repeat bg-[length:60%] opacity-50" />
                   )}
-                  {/* Camera overlay on hover */}
+                  {/* Camera hover overlay */}
                   <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <Camera size={20} className="text-primary" />
                   </div>
                 </div>
               </button>
 
-              {/* Dynamic rank badge */}
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-black border border-primary px-3 py-0.5 rounded-full text-[10px] font-display text-primary whitespace-nowrap tracking-widest uppercase">
+              {/* Dynamic rank badge below avatar */}
+              <div className="bg-black border border-primary px-3 py-0.5 rounded-full text-[10px] font-display text-primary whitespace-nowrap tracking-widest uppercase">
                 {rank.name}
               </div>
             </div>
 
-            {/* User Info */}
-            <div className="flex-1 text-center md:text-left">
-              <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+            {/* User info */}
+            <div className="flex-1 text-center md:text-left min-w-0">
+
+              {/* Username row */}
+              <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
                 {isEditing ? (
                   <div className="flex items-center gap-2">
                     <input
@@ -194,21 +205,84 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
-              <div className="font-mono text-sm text-muted-foreground flex items-center justify-center md:justify-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                STATUS: ONLINE
-              </div>
+
+              {/* ── Active equipped badge (below username, above XP bar) */}
+              {equippedId && (
+                <div className="mb-4">
+                  {/* Title row — tappable when swap is available */}
+                  <button
+                    onClick={() => canSwap && setShowSelector(s => !s)}
+                    className={`flex items-center gap-2 mx-auto md:mx-0 ${canSwap ? 'cursor-pointer' : 'cursor-default'}`}
+                    aria-label={canSwap ? 'Switch equipped badge' : undefined}
+                  >
+                    <img
+                      src={BADGE_DEFS[equippedId].img}
+                      alt={BADGE_DEFS[equippedId].name}
+                      style={{ width: 30, height: 30 }}
+                      className="object-contain flex-shrink-0"
+                    />
+                    <span className="font-display text-sm text-primary tracking-widest uppercase leading-none">
+                      {BADGE_DEFS[equippedId].name}
+                    </span>
+                    {canSwap && (
+                      <ChevronDown
+                        size={14}
+                        className={`text-muted-foreground transition-transform duration-200 flex-shrink-0 ${showSelector ? 'rotate-180' : ''}`}
+                      />
+                    )}
+                  </button>
+
+                  {/* Inline horizontal badge selector */}
+                  <AnimatePresence>
+                    {canSwap && showSelector && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-2 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                          {badgeState.unlocked.map(id => {
+                            const def = BADGE_DEFS[id];
+                            const isActive = equippedId === id;
+                            return (
+                              <button
+                                key={id}
+                                onClick={() => handleEquip(id)}
+                                className={`flex-shrink-0 flex flex-col items-center gap-1.5 px-3 py-2 rounded-lg border transition-all duration-150 ${
+                                  isActive
+                                    ? 'border-primary bg-primary/10 shadow-[0_0_8px_rgba(0,255,204,0.3)]'
+                                    : 'border-border bg-card/50 hover:border-primary/50'
+                                }`}
+                              >
+                                <img
+                                  src={def.img}
+                                  alt={def.name}
+                                  style={{ width: 30, height: 30 }}
+                                  className="object-contain"
+                                />
+                                <span className="font-mono text-[9px] text-muted-foreground uppercase whitespace-nowrap">
+                                  {def.name}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
 
               {/* XP Bar — bracket-relative fill */}
-              <div className="mt-6 max-w-md">
+              <div className="max-w-md mx-auto md:mx-0">
                 <div className="flex justify-between text-xs font-mono mb-2">
-                  <span className="text-primary flex items-center gap-1">
+                  <span className="text-primary flex items-center gap-1 flex-wrap">
                     <Zap size={12} /> XP PROGRESS
-                    <span className="ml-2 text-muted-foreground">
-                      {rank.name} → {rank.max.toLocaleString()} XP
-                    </span>
+                    <span className="ml-1 text-muted-foreground">{rank.name} → {rank.max.toLocaleString()} XP</span>
                   </span>
-                  <span className="text-white">{playerData.xp.toLocaleString()} / 100K</span>
+                  <span className="text-white whitespace-nowrap">{playerData.xp.toLocaleString()} / 100K</span>
                 </div>
                 <div className="h-2 w-full bg-card rounded-full overflow-hidden border border-border">
                   <div
@@ -216,20 +290,21 @@ export default function ProfilePage() {
                     style={{ width: `${rank.bracketPercent}%` }}
                   />
                 </div>
-                <div className="mt-1.5 flex justify-between text-[10px] font-mono text-muted-foreground/60">
-                  <span>Try a game: +10–30 XP</span>
-                  <span>Victory: +90 XP</span>
+                <div className="mt-1.5 text-[10px] font-mono text-muted-foreground/60">
+                  Explore &amp; Earn: +10–25 XP
                 </div>
               </div>
             </div>
           </div>
         </motion.div>
 
+        {/* ── Main grid ───────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+
           {/* Main Column */}
           <div className="md:col-span-2 space-y-8">
 
-            {/* Recent Logs — layout & clock logic unchanged */}
+            {/* Recent Logs — layout & clock logic fully unchanged */}
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -295,7 +370,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="glassmorphism p-4 rounded-lg border border-border text-center">
                   <div className="text-2xl font-bold font-display text-primary mb-1 text-shadow-neon-cyan">{playerData.sessions}</div>
-                  <div className="text-[10px] font-mono text-muted-foreground uppercase">Sessions</div>
+                  <div className="text-[10px] font-mono text-muted-foreground uppercase">Total Sessions</div>
                 </div>
               </div>
             </motion.section>
@@ -308,17 +383,53 @@ export default function ProfilePage() {
             >
               <h3 className="font-display text-xl text-white mb-4 border-b border-border pb-2">Badges</h3>
               <div className="space-y-3">
-                {BADGES.map(badge => (
-                  <div key={badge.id} className="flex items-center gap-4 glassmorphism p-3 rounded-lg border border-border">
-                    <div className={`w-10 h-10 flex items-center justify-center rounded-lg border bg-black/50 ${badge.color}`}>
-                      {badge.icon}
+                {BADGE_ORDER.map(id => {
+                  const def   = BADGE_DEFS[id];
+                  const owned = badgeState.unlocked.includes(id);
+                  const isEq  = equippedId === id;
+
+                  return (
+                    <div
+                      key={id}
+                      className={`flex items-start gap-3 glassmorphism p-3 rounded-lg border transition-colors ${
+                        owned ? 'border-border' : 'border-border/40 opacity-60'
+                      }`}
+                    >
+                      {/* Badge image */}
+                      <div className="flex-shrink-0 w-[30px] h-[30px] mt-0.5">
+                        <img
+                          src={def.img}
+                          alt={def.name}
+                          style={{ width: 30, height: 30 }}
+                          className={`object-contain ${owned ? '' : 'grayscale opacity-40'}`}
+                        />
+                      </div>
+
+                      {/* Name + description */}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-display text-sm text-white uppercase">{def.name}</div>
+                        <div className="font-mono text-[10px] text-muted-foreground mt-0.5 leading-snug">
+                          {owned ? def.description : 'LOCKED'}
+                        </div>
+                      </div>
+
+                      {/* Equip button (only if unlocked) */}
+                      {owned && (
+                        <button
+                          onClick={() => handleEquip(id)}
+                          className={`flex-shrink-0 text-[9px] font-mono uppercase px-2 py-1 rounded border transition-all ${
+                            isEq
+                              ? 'border-primary text-primary bg-primary/10 cursor-default'
+                              : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+                          }`}
+                          disabled={isEq}
+                        >
+                          {isEq ? 'Equipped' : 'Equip'}
+                        </button>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <div className="font-display text-sm text-white">{badge.name}</div>
-                      <div className="font-mono text-[10px] text-muted-foreground">UNLOCKED</div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </motion.section>
 

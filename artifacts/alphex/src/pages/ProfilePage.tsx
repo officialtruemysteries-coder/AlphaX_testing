@@ -1,79 +1,30 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRecentlyVisited } from '../hooks/useRecentlyVisited';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Terminal, Shield, Award, Zap, Edit2, Check, Clock, Radio } from 'lucide-react';
+import { Terminal, Shield, Award, Zap, Edit2, Check, Clock, Radio, Camera } from 'lucide-react';
 import { Link } from 'wouter';
 
-// ─── XP System ────────────────────────────────────────────────────────────────
-// Persists all XP state in localStorage under 'alphex-xp'.
-// Max XP before level-up reset: 1000.
-// awardGameTryXP()  — call when a player launches/tries a game (awards 10–30 XP)
-// awardVictoryBonus() — call on win (+90 XP)
-// applyDefeatResult() — call on loss (0 victory bonus; keeps the try XP already awarded)
-// All functions return the updated XP total.
+import {
+  readPlayerData,
+  saveUsername,
+  saveAvatar,
+  incrementSession,
+  getRankForXP,
+  type PlayerData,
+} from '../lib/playerProfile';
 
-const XP_MAX = 1000;
-const XP_KEY = 'alphex-xp';
-const XP_LEVEL_KEY = 'alphex-level';
+// Re-export XP functions so external callers (game components, etc.) import from here
+export {
+  awardGameTryXP,
+  awardVictoryBonus,
+  applyDefeatResult,
+} from '../lib/playerProfile';
 
-function readXP(): number {
-  return parseInt(localStorage.getItem(XP_KEY) ?? '0', 10) || 0;
-}
-function readLevel(): number {
-  return parseInt(localStorage.getItem(XP_LEVEL_KEY) ?? '1', 10) || 1;
-}
-function writeXP(xp: number, level: number) {
-  localStorage.setItem(XP_KEY, String(xp));
-  localStorage.setItem(XP_LEVEL_KEY, String(level));
-}
+// ─── Session flag ─────────────────────────────────────────────────────────────
+// Increments sessions exactly once per browser tab/session, not on every render.
+const SESSION_FLAG = 'alphex-session-counted';
 
-/** Returns a random integer between min and max (inclusive). */
-function randInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-/**
- * Awards 10–30 XP for launching/trying a game or app.
- * Triggers a level-up reset if the total crosses XP_MAX.
- * Returns { xp, level, gained }.
- */
-export function awardGameTryXP(): { xp: number; level: number; gained: number } {
-  const gained = randInt(10, 30);
-  let xp = readXP() + gained;
-  let level = readLevel();
-  if (xp >= XP_MAX) { xp = xp - XP_MAX; level += 1; }
-  writeXP(xp, level);
-  return { xp, level, gained };
-}
-
-/**
- * Awards exactly +90 XP for winning a game.
- * Call this IN ADDITION to awardGameTryXP on victory.
- * Returns { xp, level, gained }.
- */
-export function awardVictoryBonus(): { xp: number; level: number; gained: number } {
-  const gained = 90;
-  let xp = readXP() + gained;
-  let level = readLevel();
-  if (xp >= XP_MAX) { xp = xp - XP_MAX; level += 1; }
-  writeXP(xp, level);
-  return { xp, level, gained };
-}
-
-/**
- * Records a defeat. No victory bonus is applied — the player keeps only
- * the try XP already awarded by awardGameTryXP(). This function is a
- * no-op XP-wise but returns current state so callers can react.
- * Returns { xp, level }.
- */
-export function applyDefeatResult(): { xp: number; level: number } {
-  const xp = readXP();
-  const level = readLevel();
-  return { xp, level };
-}
-
-// ─── Live 12-hour clock hook ─────────────────────────────────────────────────
+// ─── Live 12-hour clock hook ──────────────────────────────────────────────────
 function useLiveClock(): string {
   const fmt = () =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -88,38 +39,70 @@ function useLiveClock(): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { visited, totalVisits } = useRecentlyVisited();
-  const [username, setUsername] = useLocalStorage('alphex-username', 'PLAYER_001');
-  const [sessions] = useLocalStorage('alphex-total-sessions', 1);
-
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(username);
-  const inputRef = useRef<HTMLInputElement>(null);
   const liveTime = useLiveClock();
 
-  // XP from localStorage — react to external changes via storage event
-  const [xpState, setXpState] = useState<{ xp: number; level: number }>(() => ({
-    xp: readXP(),
-    level: readLevel(),
-  }));
+  // ── Player data state (sourced from playerProfile — never wiped by username/avatar changes)
+  const [playerData, setPlayerData] = useState<PlayerData>(() => readPlayerData());
 
+  // Refresh from localStorage on storage events (e.g. XP awarded from another component)
   useEffect(() => {
-    const sync = () => setXpState({ xp: readXP(), level: readLevel() });
+    const sync = () => setPlayerData(readPlayerData());
     window.addEventListener('storage', sync);
     return () => window.removeEventListener('storage', sync);
   }, []);
+
+  // Count this browser session exactly once
+  useEffect(() => {
+    if (!sessionStorage.getItem(SESSION_FLAG)) {
+      sessionStorage.setItem(SESSION_FLAG, '1');
+      incrementSession();
+      setPlayerData(readPlayerData());
+    }
+  }, []);
+
+  // ── Username editing
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(playerData.username);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isEditing && inputRef.current) inputRef.current.focus();
   }, [isEditing]);
 
   const handleSave = () => {
-    if (editValue.trim()) setUsername(editValue.trim());
-    else setEditValue(username);
+    const trimmed = editValue.trim();
+    if (trimmed) {
+      saveUsername(trimmed);          // only writes username — XP/sessions untouched
+      setPlayerData(readPlayerData());
+    } else {
+      setEditValue(playerData.username);
+    }
     setIsEditing(false);
   };
 
-  const xpPercentage = Math.min((xpState.xp / XP_MAX) * 100, 100);
+  // ── Avatar upload
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  const handleAvatarClick = () => avatarInputRef.current?.click();
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      saveAvatar(base64);             // only writes avatar — XP/sessions untouched
+      setPlayerData(readPlayerData());
+    };
+    reader.readAsDataURL(file);
+    // Reset input so the same file can be re-selected later
+    e.target.value = '';
+  };
+
+  // ── Rank & XP bar (bracket-relative fill)
+  const rank = getRankForXP(playerData.xp);
+
+  // ── Badges (static — unlocked for all registered players)
   const BADGES = [
     { id: 'explorer', name: 'Explorer',    icon: <Terminal size={20} />, color: 'text-primary border-primary' },
     { id: 'pioneer',  name: 'Pioneer',     icon: <Shield size={20} />,   color: 'text-secondary border-secondary' },
@@ -130,7 +113,7 @@ export default function ProfilePage() {
     <div className="min-h-[100dvh] pt-24 pb-16 px-4 bg-background">
       <div className="max-w-4xl mx-auto space-y-8">
 
-        {/* Profile Header */}
+        {/* ── Profile Header ──────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -139,15 +122,43 @@ export default function ProfilePage() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
           <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
-            {/* Avatar */}
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full border-2 border-primary p-1 box-shadow-neon-cyan">
+
+            {/* Avatar — clickable, shows uploaded image or SVG placeholder */}
+            <div className="relative flex-shrink-0">
+              {/* Hidden file input */}
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept=".png,.jpg,.jpeg"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+
+              <button
+                onClick={handleAvatarClick}
+                aria-label="Change profile picture"
+                className="group block w-24 h-24 rounded-full border-2 border-primary p-1 box-shadow-neon-cyan focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
                 <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden relative">
-                  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PHBhdGggZD0iTTAgMGg0MHY0MEgweiIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik0yMCAyOGMyLjIgMCA0LTEuOCA0LTRWMThjMC0yLjItMS44LTQtNC00cy00IDEuOC00IDR2NmMwIDIuMiAxLjggNCA0IDR6bTAtMTJjMS4xIDAgMiAuOSAyIDJ2NmMwIDEuMS0uOSAyLTIgMnMtMi0uOS0yLTJ2LTZjMC0xLjEuOS0yIDItMnoiIGZpbGw9IiMwMGZmY2MiLz48cGF0aCBkPSJNMjAgMTRjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTRzNCAxLjggNCA0LTEuOCA0LTQgNHptMC02Yy0xLjEgMC0yIC45LTIgMnMuOSAyIDIgMiAyLS45IDItMi0uOS0yLTItMnoiIGZpbGw9IiMwMGZmY2MiLz48cGF0aCBkPSJNMjggMjB2MmMwIDQuNC0zLjYgOC04IDhzLTgtMy42LTgtOHYtMmgtdjJjMCA1LjIgMy45IDkuNCA5IDEwaDJWMzZIMTR2MmgxMnYtMmgtNXYtLjRjNS4xLS42IDktNC44IDktMTB2LTJoLTJ6IiBmaWxsPSIjMDBmZmNjIi8+PC9zdmc+')] bg-center bg-no-repeat bg-[length:60%] opacity-50" />
+                  {playerData.avatar ? (
+                    <img
+                      src={playerData.avatar}
+                      alt="Player avatar"
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PHBhdGggZD0iTTAgMGg0MHY0MEgweiIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik0yMCAyOGMyLjIgMCA0LTEuOCA0LTRWMThjMC0yLjItMS44LTQtNC00cy00IDEuOC00IDR2NmMwIDIuMiAxLjggNCA0IDR6bTAtMTJjMS4xIDAgMiAuOSAyIDJ2NmMwIDEuMS0uOSAyLTIgMnMtMi0uOS0yLTJ2LTZjMC0xLjEuOS0yIDItMnoiIGZpbGw9IiMwMGZmY2MiLz48cGF0aCBkPSJNMjAgMTRjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTRzNCAxLjggNCA0LTEuOCA0LTQgNHptMC02Yy0xLjEgMC0yIC45LTIgMnMuOSAyIDIgMiAyLS45IDItMi0uOS0yLTItMnoiIGZpbGw9IiMwMGZmY2MiLz48cGF0aCBkPSJNMjggMjB2MmMwIDQuNC0zLjYgOC04IDhzLTgtMy42LTgtOHYtMmgtdjJjMCA1LjIgMy45IDkuNCA5IDEwaDJWMzZIMTR2MmgxMnYtMmgtNXYtLjRjNS4xLS42IDktNC44IDktMTB2LTJoLTJ6IiBmaWxsPSIjMDBmZmNjIi8+PC9zdmc+')] bg-center bg-no-repeat bg-[length:60%] opacity-50" />
+                  )}
+                  {/* Camera overlay on hover */}
+                  <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <Camera size={20} className="text-primary" />
+                  </div>
                 </div>
-              </div>
+              </button>
+
+              {/* Dynamic rank badge */}
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-black border border-primary px-3 py-0.5 rounded-full text-[10px] font-display text-primary whitespace-nowrap tracking-widest uppercase">
-                Commander
+                {rank.name}
               </div>
             </div>
 
@@ -172,10 +183,10 @@ export default function ProfilePage() {
                 ) : (
                   <div className="flex items-center gap-2 group">
                     <h2 className="text-3xl font-display font-bold text-white tracking-wide">
-                      {username}
+                      {playerData.username}
                     </h2>
                     <button
-                      onClick={() => setIsEditing(true)}
+                      onClick={() => { setEditValue(playerData.username); setIsEditing(true); }}
                       className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary p-1"
                     >
                       <Edit2 size={16} />
@@ -188,19 +199,21 @@ export default function ProfilePage() {
                 STATUS: ONLINE
               </div>
 
-              {/* XP Bar */}
+              {/* XP Bar — bracket-relative fill */}
               <div className="mt-6 max-w-md">
                 <div className="flex justify-between text-xs font-mono mb-2">
                   <span className="text-primary flex items-center gap-1">
                     <Zap size={12} /> XP PROGRESS
-                    <span className="ml-2 text-muted-foreground">LVL {xpState.level}</span>
+                    <span className="ml-2 text-muted-foreground">
+                      {rank.name} → {rank.max.toLocaleString()} XP
+                    </span>
                   </span>
-                  <span className="text-white">{xpState.xp} / {XP_MAX}</span>
+                  <span className="text-white">{playerData.xp.toLocaleString()} / 100K</span>
                 </div>
                 <div className="h-2 w-full bg-card rounded-full overflow-hidden border border-border">
                   <div
                     className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-700 ease-out box-shadow-neon-cyan"
-                    style={{ width: `${xpPercentage}%` }}
+                    style={{ width: `${rank.bracketPercent}%` }}
                   />
                 </div>
                 <div className="mt-1.5 flex justify-between text-[10px] font-mono text-muted-foreground/60">
@@ -215,7 +228,8 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Main Column */}
           <div className="md:col-span-2 space-y-8">
-            {/* Recent Logs */}
+
+            {/* Recent Logs — layout & clock logic unchanged */}
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -266,6 +280,7 @@ export default function ProfilePage() {
 
           {/* Sidebar */}
           <div className="space-y-8">
+
             {/* Telemetry */}
             <motion.section
               initial={{ opacity: 0, x: 20 }}
@@ -279,7 +294,7 @@ export default function ProfilePage() {
                   <div className="text-[10px] font-mono text-muted-foreground uppercase">Page Views</div>
                 </div>
                 <div className="glassmorphism p-4 rounded-lg border border-border text-center">
-                  <div className="text-2xl font-bold font-display text-primary mb-1 text-shadow-neon-cyan">{sessions}</div>
+                  <div className="text-2xl font-bold font-display text-primary mb-1 text-shadow-neon-cyan">{playerData.sessions}</div>
                   <div className="text-[10px] font-mono text-muted-foreground uppercase">Sessions</div>
                 </div>
               </div>
@@ -306,6 +321,7 @@ export default function ProfilePage() {
                 ))}
               </div>
             </motion.section>
+
           </div>
         </div>
 

@@ -170,7 +170,7 @@ export default function ProfilePage() {
 
     // Reserved handle blacklist — non-owners cannot impersonate the developer
     if (!isOwner && RESERVED_HANDLES.includes(t.toLowerCase())) {
-      showToast('Username Reserved — please choose a different name');
+      showToast('⚠️ Username unavailable. Try another.');
       setEditValue(playerData.username);
       setIsEditing(false);
       return;
@@ -191,7 +191,7 @@ export default function ProfilePage() {
         if (res.ok) {
           const data = await res.json() as { ok: boolean };
           if (!data.ok) {
-            showToast('Username Already Taken');
+            showToast('⚠️ Username unavailable. Try another.');
             setEditValue(playerData.username);
             setIsEditing(false);
             return;
@@ -610,10 +610,14 @@ export default function ProfilePage() {
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-xl
                        bg-[#1a0a0a] border border-red-500/60 shadow-2xl
                        font-mono text-xs text-red-400 tracking-widest uppercase
-                       flex items-center gap-2 whitespace-nowrap pointer-events-none"
-            style={{ boxShadow: '0 0 24px rgba(239,68,68,0.20)' }}
+                       pointer-events-none text-center"
+            style={{
+              boxShadow: '0 0 24px rgba(239,68,68,0.20)',
+              maxWidth: '90%',
+              wordWrap: 'break-word',
+              whiteSpace: 'normal',
+            }}
           >
-            <span className="text-red-500 text-base leading-none">⚠</span>
             {toast}
           </motion.div>
         )}

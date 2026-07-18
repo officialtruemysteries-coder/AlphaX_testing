@@ -94,7 +94,8 @@ function generatePlayerId(): string {
 }
 
 function generateDefaultUsername(): string {
-  return `PLAYER_${randInt(100, 999)}`;
+  const n = randInt(0, 999);
+  return `Player_${String(n).padStart(3, '0')}`;
 }
 
 function dateKey(d: Date): string {
@@ -310,6 +311,24 @@ export function awardSessionXP(sessionSeconds?: number): { xp: number; gained: n
 export function awardGameTryXP(sessionSeconds?: number) { return awardSessionXP(sessionSeconds); }
 export function awardVictoryBonus(): { xp: number; gained: number } { return { xp: readPlayerData().xp, gained: 0 }; }
 export function applyDefeatResult(): { xp: number } { return { xp: readPlayerData().xp }; }
+
+// ─── Server-computed XP application ──────────────────────────────────────────
+// Applies a server-determined XP gain (from the hidden engagement timer) to
+// localStorage, then runs the same local badge/streak checks as awardSessionXP.
+// This keeps devices fully isolated — the server only computes the gain amount;
+// it never stores or merges any player state.
+export function applyXPGain(gained: number): { xp: number; gained: number; newBadges: BadgeId[] } {
+  const data = readPlayerData();
+  data.xp = Math.min(data.xp + Math.max(0, gained), XP_MAX);
+  writePlayerData(data);
+  const now  = new Date();
+  const hour = now.getHours();
+  const newBadges: BadgeId[] = [];
+  if (hour < 9)   newBadges.push(...tryUnlockBadge('earlyRiser'));
+  if (hour >= 22) newBadges.push(...tryUnlockBadge('sleepwalker'));
+  newBadges.push(...updateStreak(now));
+  return { xp: data.xp, gained, newBadges };
+}
 
 // ─── Server state merge ───────────────────────────────────────────────────────
 // Called by the frontend after receiving a response from the server-side player

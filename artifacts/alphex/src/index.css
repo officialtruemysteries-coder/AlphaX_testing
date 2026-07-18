@@ -56,14 +56,22 @@
 }
 
 @layer utilities {
+  /* ── Ultra-smooth hardware-accelerated transitions ───────────────────────── */
+  /* Applied globally to interactive elements so every hover, focus, and state  */
+  /* shift feels fluid. Uses cubic-bezier(0.4, 0, 0.2, 1) — the Material       */
+  /* Design "standard" easing — for a polished, high-end feel.                 */
   .text-shadow-neon-cyan {
     text-shadow: 0 0 5px hsl(168 100% 50% / 0.5), 0 0 10px hsl(168 100% 50% / 0.3);
+    transition: text-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   .box-shadow-neon-cyan {
     box-shadow: 0 0 5px hsl(168 100% 50% / 0.5), 0 0 15px hsl(168 100% 50% / 0.3);
   }
   .glassmorphism {
     @apply bg-card/60 backdrop-blur-[12px];
+    transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow   0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                background   0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   /* Badge image GPU-accelerated container — 32 px bounding box, own layer */
   .badge-img-wrapper {

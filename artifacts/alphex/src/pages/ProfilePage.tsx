@@ -10,7 +10,7 @@ import {
   readPlayerData, readBadges, equipBadge, saveUsername, saveAvatar, incrementSession,
   getRankForXP, getRankByName, readOwnerRankOverride, saveOwnerRankOverride,
   isGodModeAuthenticated, setGodModeAuth, unlockAllBadges,
-  getOrCreatePlayerId, applyServerState, awardSessionXP,
+  getOrCreatePlayerId, applyXPGain, awardSessionXP,
   BADGE_DEFS, BADGE_ORDER, RANK_TIERS,
   type PlayerData, type BadgeState, type BadgeId,
 } from '../lib/playerProfile';
@@ -64,28 +64,20 @@ export default function ProfilePage() {
 
   useEffect(() => { window.addEventListener('storage', refreshAll); return () => window.removeEventListener('storage', refreshAll); }, []);
 
-  // ── Server hydration: sync local state → server, receive authoritative state
+  // ── Register this device's username in the server name registry (silent, no merge)
   useEffect(() => {
     const playerId = getOrCreatePlayerId();
-    const local    = readPlayerData();
-    const badges   = readBadges();
-
-    fetch(`/api/players/${playerId}/sync`, {
+    const name     = readPlayerData().username;
+    fetch('/api/usernames/claim', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        xp:     local.xp,
-        badges: { unlocked: badges.unlocked, equipped: badges.equipped },
-      }),
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then((s: { xp?: number; badges?: { unlocked?: string[]; equipped?: string | null } } | null) => {
-        if (s) { applyServerState(s); refreshAll(); }
-      })
-      .catch(() => { /* offline — local state stays authoritative */ });
+      body: JSON.stringify({ name, playerId }),
+    }).catch(() => {});
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Session XP award: fires once per browser tab via server engagement timer
+  // ── Session XP award: fires once per browser tab via the server engagement timer.
+  // The server computes elapsed time internally and returns only the XP delta —
+  // no player state is stored server-side, keeping every device fully isolated.
   useEffect(() => {
     if (!sessionStorage.getItem(SESSION_FLAG)) {
       sessionStorage.setItem(SESSION_FLAG, '1');
@@ -100,30 +92,19 @@ export default function ProfilePage() {
         body: JSON.stringify({ token }),
       })
         .then(r => r.ok ? r.json() : null)
-        .then((s: { xp?: number; gained?: number; newBadges?: string[]; badges?: { unlocked?: string[]; equipped?: string | null } } | null) => {
-          if (s) { applyServerState(s); refreshAll(); }
+        .then((data: { gained?: number } | null) => {
+          if (typeof data?.gained === 'number') {
+            applyXPGain(data.gained); // server-computed amount, applied locally
+          } else {
+            awardSessionXP();         // fallback if server returns unexpected shape
+          }
+          refreshAll();
         })
         .catch(() => {
-          // Fallback: award XP locally if server unreachable
-          awardSessionXP();
+          awardSessionXP();           // server unreachable — use local random award
           refreshAll();
         });
     }
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Cross-device real-time sync: poll server every 30 s
-  useEffect(() => {
-    const playerId = getOrCreatePlayerId();
-    const poll = () => {
-      fetch(`/api/players/${playerId}`)
-        .then(r => r.ok ? r.json() : null)
-        .then((s: { xp?: number; badges?: { unlocked?: string[]; equipped?: string | null } } | null) => {
-          if (s) { applyServerState(s); refreshAll(); }
-        })
-        .catch(() => { /* ignore */ });
-    };
-    const id = setInterval(poll, 30_000);
-    return () => clearInterval(id);
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Toast notification
@@ -183,7 +164,7 @@ export default function ProfilePage() {
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (isEditing && inputRef.current) inputRef.current.focus(); }, [isEditing]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const t = editValue.trim().slice(0, 15); // hard cap at 15 chars
     if (!t) { setEditValue(playerData.username); setIsEditing(false); return; }
 
@@ -193,6 +174,33 @@ export default function ProfilePage() {
       setEditValue(playerData.username);
       setIsEditing(false);
       return;
+    }
+
+    // Server-side uniqueness check — only needed when the name actually changes
+    if (t.toLowerCase() !== playerData.username.toLowerCase()) {
+      try {
+        const res  = await fetch('/api/usernames/claim', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name:         t,
+            playerId:     getOrCreatePlayerId(),
+            previousName: playerData.username,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json() as { ok: boolean };
+          if (!data.ok) {
+            showToast('Username Already Taken');
+            setEditValue(playerData.username);
+            setIsEditing(false);
+            return;
+          }
+        }
+        // Non-ok HTTP or network error → fall through and save locally
+      } catch {
+        // Server unreachable — allow save without blocking the user
+      }
     }
 
     saveUsername(t);

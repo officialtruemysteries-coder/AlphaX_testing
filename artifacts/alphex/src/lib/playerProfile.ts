@@ -311,6 +311,67 @@ export function awardGameTryXP(sessionSeconds?: number) { return awardSessionXP(
 export function awardVictoryBonus(): { xp: number; gained: number } { return { xp: readPlayerData().xp, gained: 0 }; }
 export function applyDefeatResult(): { xp: number } { return { xp: readPlayerData().xp }; }
 
+// ─── Server state merge ───────────────────────────────────────────────────────
+// Called by the frontend after receiving a response from the server-side player
+// endpoints.  Merges authoritative server data into localStorage (take-max for
+// XP, additive merge for badges, take-higher for streak) so the local cache
+// always holds the best known state.
+
+export interface ServerPlayerState {
+  xp?:     number;
+  badges?: { unlocked?: string[]; equipped?: string | null };
+  streak?: { days?: number; lastDate?: string };
+}
+
+export function applyServerState(state: ServerPlayerState): void {
+  // ── XP: server wins if it has a higher value
+  if (typeof state.xp === 'number') {
+    const data = readPlayerData();
+    if (state.xp > data.xp) {
+      data.xp = Math.min(state.xp, XP_MAX);
+      writePlayerData(data);
+    }
+  }
+
+  // ── Badges: additive merge — never revoke what local already has
+  if (state.badges) {
+    const current = readBadges();
+    let changed = false;
+    if (Array.isArray(state.badges.unlocked)) {
+      for (const id of state.badges.unlocked) {
+        const bid = id as BadgeId;
+        if (!current.unlocked.includes(bid)) {
+          current.unlocked.push(bid);
+          changed = true;
+        }
+      }
+    }
+    if (
+      state.badges.equipped != null &&
+      current.unlocked.includes(state.badges.equipped as BadgeId) &&
+      !current.equipped
+    ) {
+      current.equipped = state.badges.equipped as BadgeId;
+      changed = true;
+    }
+    if (changed) writeBadges(current);
+  }
+
+  // ── Streak: take the higher day count
+  if (state.streak && typeof state.streak.days === 'number') {
+    try {
+      const raw = localStorage.getItem(STREAK_KEY);
+      const local: StreakData = raw ? JSON.parse(raw) : { lastDate: '', days: 0 };
+      if (state.streak.days > local.days) {
+        localStorage.setItem(STREAK_KEY, JSON.stringify({
+          days:     state.streak.days,
+          lastDate: state.streak.lastDate ?? local.lastDate,
+        }));
+      }
+    } catch { /* ignore */ }
+  }
+}
+
 // ─── Rank resolution ──────────────────────────────────────────────────────────
 //
 // Bracket membership (strict, non-overlapping, ascending):

@@ -10,6 +10,7 @@ import {
   readPlayerData, readBadges, equipBadge, saveUsername, saveAvatar, incrementSession,
   getRankForXP, getRankByName, readOwnerRankOverride, saveOwnerRankOverride,
   isGodModeAuthenticated, setGodModeAuth, unlockAllBadges,
+  getOrCreatePlayerId, applyServerState, awardSessionXP,
   BADGE_DEFS, BADGE_ORDER, RANK_TIERS,
   type PlayerData, type BadgeState, type BadgeId,
 } from '../lib/playerProfile';
@@ -63,13 +64,67 @@ export default function ProfilePage() {
 
   useEffect(() => { window.addEventListener('storage', refreshAll); return () => window.removeEventListener('storage', refreshAll); }, []);
 
+  // ── Server hydration: sync local state → server, receive authoritative state
+  useEffect(() => {
+    const playerId = getOrCreatePlayerId();
+    const local    = readPlayerData();
+    const badges   = readBadges();
+
+    fetch(`/api/players/${playerId}/sync`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        xp:     local.xp,
+        badges: { unlocked: badges.unlocked, equipped: badges.equipped },
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then((s: { xp?: number; badges?: { unlocked?: string[]; equipped?: string | null } } | null) => {
+        if (s) { applyServerState(s); refreshAll(); }
+      })
+      .catch(() => { /* offline — local state stays authoritative */ });
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Session XP award: fires once per browser tab via server engagement timer
   useEffect(() => {
     if (!sessionStorage.getItem(SESSION_FLAG)) {
       sessionStorage.setItem(SESSION_FLAG, '1');
       incrementSession();
-      refreshAll();
+
+      const playerId = getOrCreatePlayerId();
+      const token    = sessionStorage.getItem('alphex-session-token') ?? '';
+
+      fetch(`/api/players/${playerId}/session/award`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then((s: { xp?: number; gained?: number; newBadges?: string[]; badges?: { unlocked?: string[]; equipped?: string | null } } | null) => {
+          if (s) { applyServerState(s); refreshAll(); }
+        })
+        .catch(() => {
+          // Fallback: award XP locally if server unreachable
+          awardSessionXP();
+          refreshAll();
+        });
     }
-  }, []);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Cross-device real-time sync: poll server every 30 s
+  useEffect(() => {
+    const playerId = getOrCreatePlayerId();
+    const poll = () => {
+      fetch(`/api/players/${playerId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then((s: { xp?: number; badges?: { unlocked?: string[]; equipped?: string | null } } | null) => {
+          if (s) { applyServerState(s); refreshAll(); }
+        })
+        .catch(() => { /* ignore */ });
+    };
+    const id = setInterval(poll, 30_000);
+    return () => clearInterval(id);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Toast notification
   const [toast, setToast] = useState<string | null>(null);
@@ -404,7 +459,7 @@ export default function ProfilePage() {
                     <Zap size={12} /> XP PROGRESS
                     <span className="ml-1 text-muted-foreground">{rank.displayName} → {rank.max.toLocaleString()} XP</span>
                   </span>
-                  <span className="text-white whitespace-nowrap">{playerData.xp.toLocaleString()} / 100K</span>
+                  <span className="text-white whitespace-nowrap">{playerData.xp.toLocaleString()} / {rank.max.toLocaleString()}</span>
                 </div>
                 <div className="h-2 w-full bg-card rounded-full overflow-hidden border border-border">
                   <div
@@ -413,7 +468,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="mt-1.5 text-[10px] font-mono text-muted-foreground/60">
-                  Explore &amp; Earn: +10–25 XP
+                  Explore &amp; Earn: +10–30 XP
                 </div>
               </div>
             </div>

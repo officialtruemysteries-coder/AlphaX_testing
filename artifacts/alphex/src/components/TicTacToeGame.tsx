@@ -289,7 +289,7 @@ export function TicTacToeGame({ mode, onChangeMode }: TicTacToeGameProps) {
     statusText = 'AI is thinking…';
     statusColor = '#8a2be2';
   } else {
-    statusText = currentPlayer === 'X' ? 'Player 1's turn  ✕' : `${p2Name}'s turn  ○`;
+    statusText = currentPlayer === 'X' ? "Player 1's turn  ✕" : `${p2Name}'s turn  ○`;
     statusColor = currentPlayer === 'X' ? '#00ffcc' : '#8a2be2';
   }
 

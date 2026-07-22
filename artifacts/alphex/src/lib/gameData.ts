@@ -15,6 +15,13 @@ export const CATEGORIES: GameCategory[] = [
 ];
 
 export const GAMES: Game[] = [
+  {
+    id: "ttt",
+    title: "Tic-Tac-Toe",
+    categories: ["Single Player", "Multiplayer", "Pass & Play", "Puzzle", "Arcade", "Strategy"],
+    expectedQuarter: "Now",
+    isPlayable: true,
+  },
   { id: "1", title: "NeonStrike Online", categories: ["Multiplayer", "Shooting"], expectedQuarter: "Q3 2026" },
   { id: "2", title: "Cyber Nexus", categories: ["Single Player", "Action"], expectedQuarter: "Q3 2026" },
   { id: "3", title: "VoidRacer X", categories: ["Racing"], expectedQuarter: "Q3 2026" },

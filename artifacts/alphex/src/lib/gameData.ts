@@ -6,6 +6,7 @@ export interface Game {
   categories: GameCategory[];
   expectedQuarter: string;
   isApp?: boolean;
+  isPlayable?: boolean;
 }
 
 export const CATEGORIES: GameCategory[] = [

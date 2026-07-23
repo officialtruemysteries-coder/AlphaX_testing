@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, ArrowLeft } from 'lucide-react';
+import { useGameSounds } from '../hooks/useGameSounds';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Cell = 'X' | 'O' | null;
 export type GameMode = 'ai' | 'pass-and-play';
+export type Difficulty = 'easy' | 'normal' | 'hard';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const WINNING_LINES = [
@@ -57,15 +59,21 @@ function minimax(board: Cell[], isMaximizing: boolean, depth: number, alpha: num
   }
 }
 
-function getBestMove(board: Cell[]): number {
+function getBestMove(board: Cell[], difficulty: Difficulty): number {
   const boardCopy = [...board] as Cell[];
   const empty = boardCopy.map((c, i) => (c === null ? i : -1)).filter(i => i !== -1);
 
-  // 30% random "mistake" — keeps the game winnable and fun for all ages
-  if (Math.random() < 0.3 && empty.length > 1) {
+  // Easy: fully random
+  if (difficulty === 'easy') {
     return empty[Math.floor(Math.random() * empty.length)];
   }
 
+  // Normal: 30% random "mistake" — stays beatable for all ages
+  if (difficulty === 'normal' && Math.random() < 0.3 && empty.length > 1) {
+    return empty[Math.floor(Math.random() * empty.length)];
+  }
+
+  // Hard (and Normal fallthrough): pure minimax
   let best = -Infinity;
   let bestMove = empty[0];
   for (const i of empty) {
@@ -78,6 +86,13 @@ function getBestMove(board: Cell[]): number {
     }
   }
   return bestMove;
+}
+
+// ─── AI thinking delay by difficulty ─────────────────────────────────────────
+function thinkDelay(difficulty: Difficulty): number {
+  if (difficulty === 'easy') return 420;
+  if (difficulty === 'normal') return 580;
+  return 750; // Hard — pause for effect
 }
 
 // ─── Symbols ─────────────────────────────────────────────────────────────────
@@ -124,20 +139,45 @@ function OSymbol({ dim }: { dim?: boolean }) {
   );
 }
 
+// ─── Difficulty badge ─────────────────────────────────────────────────────────
+const DIFFICULTY_META: Record<Difficulty, { label: string; dot: string; color: string }> = {
+  easy:   { label: 'Easy',   dot: '#22c55e', color: 'rgba(34,197,94,0.18)'  },
+  normal: { label: 'Normal', dot: '#eab308', color: 'rgba(234,179,8,0.18)'  },
+  hard:   { label: 'Hard',   dot: '#ef4444', color: 'rgba(239,68,68,0.18)'  },
+};
+
 // ─── Scoreboard ──────────────────────────────────────────────────────────────
 interface ScoreboardProps {
   mode: GameMode;
+  difficulty?: Difficulty;
   scores: { X: number; O: number; draw: number };
   onChangeMode: () => void;
   onNewGame: () => void;
 }
 
-function Scoreboard({ mode, scores, onChangeMode, onNewGame }: ScoreboardProps) {
+function Scoreboard({ mode, difficulty, scores, onChangeMode, onNewGame }: ScoreboardProps) {
   const p1Label = 'Player 1';
   const p2Label = mode === 'ai' ? 'AI Bot' : 'Player 2';
+  const meta = difficulty ? DIFFICULTY_META[difficulty] : null;
 
   return (
     <div className="w-full mb-3">
+      {/* Difficulty chip (AI mode only) */}
+      {meta && (
+        <div className="flex justify-center mb-2">
+          <span
+            className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest px-3 py-1 rounded-full"
+            style={{ background: meta.color, border: `1px solid ${meta.dot}55`, color: meta.dot }}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ background: meta.dot, boxShadow: `0 0 4px ${meta.dot}` }}
+            />
+            {meta.label}
+          </span>
+        </div>
+      )}
+
       {/* Score row */}
       <div className="flex items-stretch gap-2">
         {/* P1 */}
@@ -201,16 +241,19 @@ function Scoreboard({ mode, scores, onChangeMode, onNewGame }: ScoreboardProps) 
 // ─── Main Game Component ──────────────────────────────────────────────────────
 interface TicTacToeGameProps {
   mode: GameMode;
+  difficulty?: Difficulty;
   onChangeMode: () => void;
 }
 
-export function TicTacToeGame({ mode, onChangeMode }: TicTacToeGameProps) {
+export function TicTacToeGame({ mode, difficulty = 'normal', onChangeMode }: TicTacToeGameProps) {
   const [board, setBoard] = useState<Cell[]>(Array(9).fill(null));
   const [currentPlayer, setCurrentPlayer] = useState<'X' | 'O'>('X');
   const [gameResult, setGameResult] = useState<{ winner: 'X' | 'O'; line: number[] } | null>(null);
   const [isDraw, setIsDraw] = useState(false);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [scores, setScores] = useState({ X: 0, O: 0, draw: 0 });
+
+  const { playMove, playLineComplete, playVictory, playDefeat, playDraw } = useGameSounds();
 
   const resetBoard = useCallback(() => {
     setBoard(Array(9).fill(null));
@@ -225,7 +268,25 @@ export function TicTacToeGame({ mode, onChangeMode }: TicTacToeGameProps) {
     resetBoard();
   }, [resetBoard]);
 
-  // AI move effect
+  // ── Resolve outcome sounds (fires when gameResult / isDraw changes) ─────────
+  useEffect(() => {
+    if (gameResult) {
+      playLineComplete();
+      if (mode === 'ai') {
+        // In AI mode: X = human win, O = AI win
+        if (gameResult.winner === 'X') setTimeout(playVictory, 10);
+        else setTimeout(playDefeat, 10);
+      } else {
+        // Pass & play: both are victories
+        setTimeout(playVictory, 10);
+      }
+    } else if (isDraw) {
+      playDraw();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameResult, isDraw]);
+
+  // ── AI move effect ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (mode !== 'ai' || currentPlayer !== 'O' || gameResult || isDraw) return;
     const empty = board.filter(c => c === null);
@@ -233,10 +294,11 @@ export function TicTacToeGame({ mode, onChangeMode }: TicTacToeGameProps) {
 
     setIsAiThinking(true);
     const timer = setTimeout(() => {
-      const move = getBestMove([...board]);
+      const move = getBestMove([...board], difficulty);
       const newBoard = [...board] as Cell[];
       newBoard[move] = 'O';
       setBoard(newBoard);
+      playMove(); // AI places its piece
 
       const result = checkWinner(newBoard);
       if (result) {
@@ -249,10 +311,11 @@ export function TicTacToeGame({ mode, onChangeMode }: TicTacToeGameProps) {
         setCurrentPlayer('X');
       }
       setIsAiThinking(false);
-    }, 580);
+    }, thinkDelay(difficulty));
 
     return () => clearTimeout(timer);
-  }, [board, currentPlayer, mode, gameResult, isDraw]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board, currentPlayer, mode, gameResult, isDraw, difficulty]);
 
   const handleClick = (index: number) => {
     if (board[index] || gameResult || isDraw || isAiThinking) return;
@@ -261,6 +324,7 @@ export function TicTacToeGame({ mode, onChangeMode }: TicTacToeGameProps) {
     const newBoard = [...board] as Cell[];
     newBoard[index] = currentPlayer;
     setBoard(newBoard);
+    playMove(); // Human places piece
 
     const result = checkWinner(newBoard);
     if (result) {
@@ -299,6 +363,7 @@ export function TicTacToeGame({ mode, onChangeMode }: TicTacToeGameProps) {
     <div className="flex flex-col items-center w-full select-none">
       <Scoreboard
         mode={mode}
+        difficulty={mode === 'ai' ? difficulty : undefined}
         scores={scores}
         onChangeMode={onChangeMode}
         onNewGame={handleResetScores}
@@ -414,7 +479,7 @@ export function TicTacToeGame({ mode, onChangeMode }: TicTacToeGameProps) {
                   <AnimatePresence>
                     {cell && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        {cell === 'X' ? <XSymbol dim={isDimmed} /> : <OSymbol dim={isDimmed} />}
+                        {cell === 'X' ? <XSymbol dim={!!isDimmed} /> : <OSymbol dim={!!isDimmed} />}
                       </div>
                     )}
                   </AnimatePresence>

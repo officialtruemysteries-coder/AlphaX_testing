@@ -476,7 +476,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="mt-1.5 text-[10px] font-mono text-muted-foreground/60">
-                  Explore &amp; Earn: +10–30 XP
+                  Play &amp; Earn: +10–30 XP
                 </div>
               </div>
             </div>

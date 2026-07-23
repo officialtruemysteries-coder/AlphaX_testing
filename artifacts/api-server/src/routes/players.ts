@@ -73,6 +73,46 @@ function computeGain(sessionSeconds: number): number {
   return randInt(10, 25); // base award
 }
 
+// ── Game-specific XP rules (hidden from client) ───────────────────────────────
+// < 5 s  → 0 XP  (prevents instant-exit exploit)
+// 5–59 s → 10–30 XP (random integer, inclusive)
+// ≥ 60 s → 15–30 XP (random integer, inclusive)
+function computeGameGain(sessionSeconds: number): number {
+  if (sessionSeconds < 5)  return 0;
+  if (sessionSeconds < 60) return randInt(10, 30);
+  return randInt(15, 30);
+}
+
+// ── POST /api/players/:playerId/game/start ────────────────────────────────────
+// Starts a hidden per-game timer. Returns an opaque token.
+router.post("/players/:playerId/game/start", (req: Request, res: Response) => {
+  const { playerId } = req.params;
+  if (!isValidId(playerId)) { res.status(400).json({ error: "invalid playerId" }); return; }
+  const token = generateToken();
+  sessions.set(token, { playerId, startTime: Date.now(), awarded: false });
+  res.json({ token, ok: true });
+});
+
+// ── POST /api/players/:playerId/game/award ────────────────────────────────────
+// Computes elapsed game time, applies game-specific XP rules.
+// Returns ONLY { gained } — the client never sees elapsed seconds.
+router.post("/players/:playerId/game/award", (req: Request, res: Response) => {
+  const { playerId } = req.params;
+  if (!isValidId(playerId)) { res.status(400).json({ error: "invalid playerId" }); return; }
+
+  const { token } = req.body as { token?: string };
+  let sessionSeconds = 0;
+  if (typeof token === "string") {
+    const sess = sessions.get(token);
+    if (sess && sess.playerId === playerId && !sess.awarded) {
+      sessionSeconds = (Date.now() - sess.startTime) / 1_000;
+      sess.awarded = true;
+    }
+  }
+
+  res.json({ gained: computeGameGain(sessionSeconds) });
+});
+
 // ── POST /api/players/:playerId/session/start ─────────────────────────────────
 // Starts the hidden engagement timer. Returns an opaque token.
 router.post("/players/:playerId/session/start", (req: Request, res: Response) => {

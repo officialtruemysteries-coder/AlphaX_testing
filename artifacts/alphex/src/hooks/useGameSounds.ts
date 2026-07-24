@@ -163,5 +163,44 @@ export function useGameSounds() {
     } catch (_) { /* noop */ }
   }, [ctx]);
 
-  return { playMove, playLineComplete, playVictory, playDefeat, playDraw, playXPChime };
+  // ── Badge unlock: 4-note ascending sparkle shimmer ─────────────────────────
+  // More "magical" than the XP chime — a soft major arpeggio with a shimmer
+  // layer that feels celebratory yet gentle for a global, all-age audience.
+  const playBadgeUnlock = useCallback(() => {
+    try {
+      const c = ctx();
+      const t = c.currentTime;
+
+      // G6 → B6 → D7 → G7 — bright ascending major arpeggio, ~380 ms total
+      const notes = [1567.98, 1975.53, 2349.32, 3135.96];
+      notes.forEach((freq, i) => {
+        const osc  = c.createOscillator();
+        const gain = c.createGain();
+        osc.connect(gain);
+        gain.connect(c.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t + i * 0.08);
+        gain.gain.setValueAtTime(0.0,     t + i * 0.08);
+        gain.gain.linearRampToValueAtTime(0.065, t + i * 0.08 + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.08 + 0.28);
+        osc.start(t + i * 0.08);
+        osc.stop(t  + i * 0.08 + 0.30);
+      });
+
+      // Soft shimmer layer — triangle wave at root note for warmth
+      const shimmer  = c.createOscillator();
+      const shimGain = c.createGain();
+      shimmer.connect(shimGain);
+      shimGain.connect(c.destination);
+      shimmer.type = 'triangle';
+      shimmer.frequency.setValueAtTime(1567.98, t);
+      shimGain.gain.setValueAtTime(0.0,   t);
+      shimGain.gain.linearRampToValueAtTime(0.028, t + 0.02);
+      shimGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.46);
+      shimmer.start(t);
+      shimmer.stop(t + 0.47);
+    } catch (_) { /* noop */ }
+  }, [ctx]);
+
+  return { playMove, playLineComplete, playVictory, playDefeat, playDraw, playXPChime, playBadgeUnlock };
 }

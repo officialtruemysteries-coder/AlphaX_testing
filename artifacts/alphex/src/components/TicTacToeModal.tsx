@@ -12,6 +12,7 @@ import {
 import type { BadgeId } from '../lib/playerProfile';
 import { disconnectSocket } from '../lib/socket';
 import type { OnlineGameState } from '../lib/onlineTypes';
+import { useGameSounds } from '../hooks/useGameSounds';
 
 interface TicTacToeModalProps {
   isOpen: boolean;
@@ -133,6 +134,9 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
   // Online game state — set by OnlineLobby once both players are in room
   const [onlineGameState, setOnlineGameState] = useState<OnlineGameState | null>(null);
 
+  // ── Badge unlock sound ────────────────────────────────────────────────────
+  const { playBadgeUnlock } = useGameSounds();
+
   // ── Toast queue ───────────────────────────────────────────────────────────
   // Toasts stack vertically in a fixed container at the top-center of the screen.
   // Each auto-removes after 3.4 s.
@@ -147,8 +151,11 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
     }, 3_400);
   }, []);
 
-  const showXpToast    = useCallback((gained: number)     => pushToast({ type: 'xp', gained }),    [pushToast]);
-  const showBadgeToast = useCallback((badgeName: string)  => pushToast({ type: 'badge', badgeName }), [pushToast]);
+  const showXpToast = useCallback((gained: number) => pushToast({ type: 'xp', gained }), [pushToast]);
+  const showBadgeToast = useCallback((badgeName: string) => {
+    pushToast({ type: 'badge', badgeName });
+    playBadgeUnlock(); // soft sparkle chime on every badge unlock
+  }, [pushToast, playBadgeUnlock]);
 
   // ── Hidden game timer refs (for AI / P&P modes) ──────────────────────────
   const gameTokenRef = useRef<string | null>(null);

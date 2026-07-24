@@ -123,16 +123,7 @@ function PlayerCard({ username, rankDisplayName, equippedBadgeName, symbol, scor
         </span>
       )}
 
-      {/* Badge — ONLY if equippedBadgeName is set */}
-      {equippedBadgeName && (
-        <span
-          className="text-[8px] font-mono mt-0.5 text-center truncate max-w-full px-1.5 py-0.5 rounded"
-          style={{ background: `${accent}15`, color: `${accent}99`, border: `1px solid ${accent}22` }}
-          title={equippedBadgeName}
-        >
-          {equippedBadgeName}
-        </span>
-      )}
+      {/* Badges are NOT shown in-game — displayed on Profile page only */}
 
       {/* YOU chip */}
       {isMe && (

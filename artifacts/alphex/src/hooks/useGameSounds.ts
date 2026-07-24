@@ -137,5 +137,31 @@ export function useGameSounds() {
     } catch (_) { /* noop */ }
   }, [ctx]);
 
-  return { playMove, playLineComplete, playVictory, playDefeat, playDraw };
+  // ── XP reward chime: soft 3-note ascending sparkle ─────────────────────────
+  // Deliberately quieter and shorter than victory/defeat so it feels like a
+  // subtle reward notification rather than a second fanfare.
+  const playXPChime = useCallback(() => {
+    try {
+      const c = ctx();
+      const t = c.currentTime;
+
+      // E6 → G6 → C7 — gentle ascending sparkle, ~280 ms total
+      const notes = [1318.51, 1567.98, 2093.0];
+      notes.forEach((freq, i) => {
+        const osc  = c.createOscillator();
+        const gain = c.createGain();
+        osc.connect(gain);
+        gain.connect(c.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t + i * 0.075);
+        gain.gain.setValueAtTime(0.0,    t + i * 0.075);
+        gain.gain.linearRampToValueAtTime(0.07, t + i * 0.075 + 0.018);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.075 + 0.21);
+        osc.start(t + i * 0.075);
+        osc.stop(t  + i * 0.075 + 0.23);
+      });
+    } catch (_) { /* noop */ }
+  }, [ctx]);
+
+  return { playMove, playLineComplete, playVictory, playDefeat, playDraw, playXPChime };
 }

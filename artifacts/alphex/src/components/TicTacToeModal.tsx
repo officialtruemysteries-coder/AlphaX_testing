@@ -2,16 +2,30 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, Zap } from 'lucide-react';
 import { TicTacToeGame, GameMode, Difficulty } from './TicTacToeGame';
-import { getOrCreatePlayerId, applyXPGain } from '../lib/playerProfile';
+import { OnlineLobby } from './OnlineLobby';
+import { OnlineGame } from './OnlineGame';
+import {
+  getOrCreatePlayerId,
+  applyXPGain,
+  BADGE_DEFS,
+} from '../lib/playerProfile';
+import type { BadgeId } from '../lib/playerProfile';
+import { disconnectSocket } from '../lib/socket';
+import type { OnlineGameState } from '../lib/onlineTypes';
 
 interface TicTacToeModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type Phase = 'splash' | 'mode-select' | 'difficulty-select' | 'playing';
+type Phase =
+  | 'splash'
+  | 'mode-select'
+  | 'difficulty-select'
+  | 'playing'           // AI / Pass-and-Play
+  | 'online';           // Online multiplayer (lobby + game managed inside)
 
-// ─── Client-side fallback XP rules (mirrors server logic exactly) ─────────────
+// ─── Client-side XP fallback (mirrors server rules exactly) ──────────────────
 function clientGameGain(seconds: number): number {
   if (seconds < 5)  return 0;
   if (seconds < 60) return Math.floor(Math.random() * 21) + 10; // 10–30
@@ -39,28 +53,30 @@ function MiniBoard() {
 
 // ─── Difficulty options ───────────────────────────────────────────────────────
 const DIFFICULTY_OPTIONS: {
-  value: Difficulty;
-  emoji: string;
-  label: string;
-  accent: string;
-  accentFaint: string;
+  value: Difficulty; emoji: string; label: string; accent: string; accentFaint: string;
 }[] = [
   { value: 'easy',   emoji: '🟢', label: 'Easy',   accent: '#22c55e', accentFaint: 'rgba(34,197,94,0.15)'  },
   { value: 'normal', emoji: '🟡', label: 'Normal', accent: '#eab308', accentFaint: 'rgba(234,179,8,0.15)'  },
   { value: 'hard',   emoji: '🔴', label: 'Hard',   accent: '#ef4444', accentFaint: 'rgba(239,68,68,0.15)'  },
 ];
 
-// ─── XP toast (fixed, above everything) ──────────────────────────────────────
+// ─── Toast types ──────────────────────────────────────────────────────────────
+
+type ToastItem =
+  | { id: number; type: 'xp';    gained: number }
+  | { id: number; type: 'badge'; badgeName: string };
+
+// ─── XP toast ─────────────────────────────────────────────────────────────────
 function XPToast({ gained }: { gained: number }) {
   return (
     <motion.div
+      layout
       initial={{ opacity: 0, y: -16, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0,   scale: 1    }}
-      exit={{    opacity: 0, y: -16, scale: 0.9  }}
+      animate={{ opacity: 1,  y: 0,   scale: 1   }}
+      exit={{    opacity: 0,  y: -16, scale: 0.9 }}
       transition={{ type: 'spring', stiffness: 380, damping: 26 }}
-      className="fixed top-6 left-1/2 z-[200] flex items-center gap-2.5 px-5 py-3 rounded-2xl"
+      className="flex items-center gap-2.5 px-5 py-3 rounded-2xl whitespace-nowrap"
       style={{
-        transform: 'translateX(-50%)',
         background: 'linear-gradient(135deg, rgba(0,20,14,0.96), rgba(0,14,10,0.98))',
         border: '1px solid rgba(0,255,204,0.55)',
         boxShadow: '0 0 32px rgba(0,255,204,0.22), 0 8px 32px rgba(0,0,0,0.6)',
@@ -79,25 +95,66 @@ function XPToast({ gained }: { gained: number }) {
   );
 }
 
+// ─── Badge unlock toast ────────────────────────────────────────────────────────
+function BadgeToast({ badgeName }: { badgeName: string }) {
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: -16, scale: 0.9 }}
+      animate={{ opacity: 1,  y: 0,   scale: 1   }}
+      exit={{    opacity: 0,  y: -16, scale: 0.9 }}
+      transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+      className="flex items-center gap-2.5 px-5 py-3 rounded-2xl whitespace-nowrap"
+      style={{
+        background: 'linear-gradient(135deg, rgba(20,8,40,0.96), rgba(14,6,28,0.98))',
+        border: '1px solid rgba(192,132,252,0.6)',
+        boxShadow: '0 0 32px rgba(192,132,252,0.22), 0 8px 32px rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(12px)',
+        pointerEvents: 'none',
+      }}
+    >
+      <span style={{ fontSize: 16, lineHeight: 1 }}>🏆</span>
+      <span
+        className="font-display font-bold text-sm tracking-widest uppercase"
+        style={{ color: '#c084fc', textShadow: '0 0 12px rgba(192,132,252,0.7)' }}
+      >
+        Badge Unlocked: {badgeName}
+      </span>
+    </motion.div>
+  );
+}
+
 // ─── Modal ────────────────────────────────────────────────────────────────────
 export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
-  const [phase, setPhase]           = useState<Phase>('splash');
-  const [mode, setMode]             = useState<GameMode | null>(null);
+  const [phase,      setPhase]      = useState<Phase>('splash');
+  const [mode,       setMode]       = useState<GameMode | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
-  const [xpToast, setXpToast]       = useState<number | null>(null);
 
-  // ── Hidden game timer refs ───────────────────────────────────────────────────
+  // Online game state — set by OnlineLobby once both players are in room
+  const [onlineGameState, setOnlineGameState] = useState<OnlineGameState | null>(null);
+
+  // ── Toast queue ───────────────────────────────────────────────────────────
+  // Toasts stack vertically in a fixed container at the top-center of the screen.
+  // Each auto-removes after 3.4 s.
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const toastIdRef = useRef(0);
+
+  const pushToast = useCallback((item: Omit<ToastItem, 'id'>) => {
+    const id = ++toastIdRef.current;
+    setToasts(prev => [...prev, { ...item, id } as ToastItem]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3_400);
+  }, []);
+
+  const showXpToast    = useCallback((gained: number)     => pushToast({ type: 'xp', gained }),    [pushToast]);
+  const showBadgeToast = useCallback((badgeName: string)  => pushToast({ type: 'badge', badgeName }), [pushToast]);
+
+  // ── Hidden game timer refs (for AI / P&P modes) ──────────────────────────
   const gameTokenRef = useRef<string | null>(null);
   const gameStartRef = useRef<number | null>(null);
-  const toastTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showXpToast = (gained: number) => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setXpToast(gained);
-    toastTimer.current = setTimeout(() => setXpToast(null), 3400);
-  };
-
-  // ── Start hidden game timer when entering playing phase ────────────────────
+  // Start hidden timer when entering the local playing phase
   useEffect(() => {
     if (phase === 'playing') {
       gameStartRef.current = Date.now();
@@ -109,9 +166,9 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
     }
   }, [phase]);
 
-  // ── Award XP when leaving playing phase (or closing modal) ────────────────
+  // Award XP when leaving the local playing phase.
+  // Also evaluates and shows badge unlock notifications.
   const awardGameXP = useCallback(async () => {
-    // Only fire once — both refs are nulled after first call
     const token     = gameTokenRef.current;
     const startTime = gameStartRef.current;
     if (token === null && startTime === null) return;
@@ -121,49 +178,92 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
     const playerId = getOrCreatePlayerId();
     let gained = 0;
 
-    // Try server-side award (server holds the authoritative elapsed time)
     if (token) {
       try {
         const res = await fetch(`/api/players/${playerId}/game/award`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token }),
         });
         if (res.ok) {
           const data = await res.json() as { gained?: number };
           if (typeof data.gained === 'number') gained = data.gained;
         }
-      } catch { /* fall through to client fallback */ }
+      } catch { /* fall through */ }
     }
 
-    // Client-side fallback (server unreachable or token missing)
     if (gained === 0 && startTime !== null) {
       gained = clientGameGain((Date.now() - startTime) / 1_000);
     }
 
     if (gained > 0) {
-      applyXPGain(gained);
-      showXpToast(gained);
+      const result = applyXPGain(gained);
+      showXpToast(result.gained);
+      // Show badge unlock notification for each newly unlocked badge
+      for (const id of result.newBadges) {
+        showBadgeToast(BADGE_DEFS[id].name);
+      }
     }
+  }, [showXpToast, showBadgeToast]);
+
+  // ── Online game end handler ───────────────────────────────────────────────
+  // Called by OnlineGame when a match concludes. Receives the XP + badges
+  // already awarded (via awardSessionXP inside OnlineGame).
+  const handleOnlineGameEnd = useCallback((result: { gained: number; newBadges: BadgeId[] }) => {
+    if (result.gained > 0) showXpToast(result.gained);
+    for (const id of result.newBadges) {
+      showBadgeToast(BADGE_DEFS[id].name);
+    }
+  }, [showXpToast, showBadgeToast]);
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+
+  const resetToSplash = useCallback(() => {
+    setPhase('splash');
+    setMode(null);
+    setDifficulty('normal');
+    setOnlineGameState(null);
   }, []);
 
-  // ─── Navigation helpers ───────────────────────────────────────────────────
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (phase === 'playing') awardGameXP();
+    if (phase === 'online') {
+      disconnectSocket();
+      setOnlineGameState(null);
+    }
     onClose();
-    setTimeout(() => {
-      setPhase('splash');
+    setTimeout(resetToSplash, 320);
+  }, [phase, awardGameXP, onClose, resetToSplash]);
+
+  const handleBack = useCallback(() => {
+    if (phase === 'mode-select')        { setPhase('splash'); }
+    else if (phase === 'difficulty-select') { setPhase('mode-select'); }
+    else if (phase === 'playing')       {
+      awardGameXP();
+      setPhase('mode-select');
       setMode(null);
       setDifficulty('normal');
-    }, 320);
-  };
+    }
+    else if (phase === 'online') {
+      // If in the online lobby (no game started yet), just go back
+      if (!onlineGameState) {
+        disconnectSocket();
+        setPhase('mode-select');
+      }
+      // If game is active, "Back" is handled inside OnlineGame (Leave button)
+    }
+  }, [phase, onlineGameState, awardGameXP]);
 
-  const handlePlay = () => setPhase('mode-select');
-
-  const handleSelectMode = (m: GameMode) => {
-    setMode(m);
-    if (m === 'ai') setPhase('difficulty-select');
-    else            setPhase('playing');
+  const handleSelectMode = (m: GameMode | 'online') => {
+    if (m === 'online') {
+      setMode(null);
+      setPhase('online');
+    } else if (m === 'ai') {
+      setMode(m);
+      setPhase('difficulty-select');
+    } else {
+      setMode(m);
+      setPhase('playing');
+    }
   };
 
   const handleSelectDifficulty = (d: Difficulty) => {
@@ -171,42 +271,62 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
     setPhase('playing');
   };
 
-  const handleChangeMode = () => {
+  const handleChangeMode = useCallback(() => {
     if (phase === 'playing') awardGameXP();
     setPhase('mode-select');
     setMode(null);
     setDifficulty('normal');
-  };
+  }, [phase, awardGameXP]);
 
-  const handleBack = () => {
-    if (phase === 'mode-select')        setPhase('splash');
-    else if (phase === 'difficulty-select') setPhase('mode-select');
-    else if (phase === 'playing')       handleChangeMode();
-  };
+  // Online: game started — called by OnlineLobby when both players are in
+  const handleOnlineGameStart = useCallback((state: OnlineGameState) => {
+    setOnlineGameState(state);
+  }, []);
 
-  const showBack = phase !== 'splash';
+  // Online: player left game — return to online lobby
+  const handleOnlineGameLeave = useCallback(() => {
+    setOnlineGameState(null);
+    // Keep socket connected; user is back in the lobby
+  }, []);
+
+  // Online: player wants to go back to mode-select from lobby
+  const handleOnlineBack = useCallback(() => {
+    disconnectSocket();
+    setOnlineGameState(null);
+    setPhase('mode-select');
+  }, []);
+
+  const showBack = phase !== 'splash' && !(phase === 'online' && onlineGameState !== null);
+  const headerTitle = phase === 'online' ? 'Online Multiplayer' : 'Tic-Tac-Toe';
 
   return (
     <>
-      {/* ── Global XP toast — fixed to viewport, above modal ─────────────── */}
-      <AnimatePresence>
-        {xpToast !== null && <XPToast gained={xpToast} />}
-      </AnimatePresence>
+      {/* ── Toast stack — fixed at top-center, stacks vertically ─────────── */}
+      <div
+        className="fixed top-6 left-1/2 z-[200] flex flex-col items-center gap-2"
+        style={{ transform: 'translateX(-50%)', pointerEvents: 'none' }}
+      >
+        <AnimatePresence>
+          {toasts.map(toast =>
+            toast.type === 'xp'
+              ? <XPToast    key={toast.id} gained={toast.gained} />
+              : <BadgeToast key={toast.id} badgeName={toast.badgeName} />
+          )}
+        </AnimatePresence>
+      </div>
 
       <AnimatePresence>
         {isOpen && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5">
             {/* Backdrop */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="absolute inset-0 bg-black/70 backdrop-blur-md"
               onClick={handleClose}
             />
 
-            {/* Modal panel */}
+            {/* Panel */}
             <motion.div
               key={phase}
               initial={{ scale: 0.94, opacity: 0, y: 16 }}
@@ -246,63 +366,44 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
                   className="font-display text-base font-bold uppercase tracking-widest text-[#00ffcc]"
                   style={{ textShadow: '0 0 12px rgba(0,255,204,0.5)' }}
                 >
-                  Tic-Tac-Toe
+                  {headerTitle}
                 </h2>
 
                 <button
                   onClick={handleClose}
-                  className="flex items-center justify-center w-8 h-8 rounded-full
-                             text-white/40 hover:text-white hover:bg-white/10
-                             transition-all duration-150 cursor-pointer"
+                  className="flex items-center justify-center w-8 h-8 rounded-full text-white/40
+                             hover:text-white hover:bg-white/10 transition-all duration-150 cursor-pointer"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              {/* ── Scrollable body ─────────────────────────────────────── */}
+              {/* ── Body ───────────────────────────────────────────────── */}
               <div className="overflow-y-auto flex-1 px-5 pb-5 pt-4" style={{ scrollbarWidth: 'none' }}>
 
-                {/* PHASE: splash ─────────────────────────────────────────── */}
+                {/* SPLASH */}
                 {phase === 'splash' && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col items-center gap-5"
-                  >
-                    <div
-                      className="w-full rounded-2xl overflow-hidden flex items-center justify-center"
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col items-center gap-5">
+                    <div className="w-full rounded-2xl overflow-hidden flex items-center justify-center"
                       style={{
                         background: 'radial-gradient(ellipse at center, #0d1f1a 0%, #0b0c10 100%)',
-                        border: '1px solid rgba(0,255,204,0.15)',
-                        aspectRatio: '16/9',
-                        maxHeight: 180,
-                        padding: '8%',
-                      }}
-                    >
+                        border: '1px solid rgba(0,255,204,0.15)', aspectRatio: '16/9', maxHeight: 180, padding: '8%',
+                      }}>
                       <MiniBoard />
                     </div>
-
                     <p className="text-center text-white/50 text-sm font-sans leading-relaxed">
-                      Align 3 X's or O's in a row to win. Play with AI or enjoy Pass &amp; Play with 2 players on the same device.
+                      Align 3 X's or O's in a row to win. Play with AI, enjoy Pass &amp; Play with 2 players,
+                      or challenge players worldwide in real-time Online Multiplayer.
                     </p>
-
                     <button
-                      onClick={handlePlay}
-                      className="w-full py-3.5 rounded-xl font-display tracking-widest uppercase text-sm font-bold transition-all duration-200 cursor-pointer"
+                      onClick={() => setPhase('mode-select')}
+                      className="w-full py-3.5 rounded-xl font-display tracking-widest uppercase text-sm font-bold
+                                 transition-all duration-200 cursor-pointer"
                       style={{
                         background: 'linear-gradient(135deg, rgba(0,255,204,0.15), rgba(0,255,204,0.05))',
-                        border: '1px solid rgba(0,255,204,0.5)',
-                        color: '#00ffcc',
-                        textShadow: '0 0 10px rgba(0,255,204,0.6)',
-                        boxShadow: '0 0 20px rgba(0,255,204,0.1)',
-                      }}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.boxShadow = '0 0 30px rgba(0,255,204,0.2)';
-                        (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.8)';
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLElement).style.boxShadow = '0 0 20px rgba(0,255,204,0.1)';
-                        (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.5)';
+                        border: '1px solid rgba(0,255,204,0.5)', color: '#00ffcc',
+                        textShadow: '0 0 10px rgba(0,255,204,0.6)', boxShadow: '0 0 20px rgba(0,255,204,0.1)',
                       }}
                     >
                       ▶ &nbsp; Play Now
@@ -310,182 +411,131 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
                   </motion.div>
                 )}
 
-                {/* PHASE: mode-select ──────────────────────────────────────── */}
+                {/* MODE SELECT */}
                 {phase === 'mode-select' && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex flex-col gap-4"
-                  >
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                    className="flex flex-col gap-4">
                     <p className="text-center text-white/40 font-mono text-xs uppercase tracking-widest mb-1">
                       Select Game Mode
                     </p>
 
-                    {/* Play vs AI */}
-                    <button
-                      onClick={() => handleSelectMode('ai')}
-                      className="group flex items-center gap-4 w-full p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(0,255,204,0.06), rgba(0,255,204,0.02))',
-                        border: '1px solid rgba(0,255,204,0.2)',
-                      }}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.55)';
-                        (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(0,255,204,0.11), rgba(0,255,204,0.04))';
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.2)';
-                        (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(0,255,204,0.06), rgba(0,255,204,0.02))';
-                      }}
-                    >
-                      <div
-                        className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center text-2xl"
-                        style={{ background: 'rgba(0,255,204,0.08)', border: '1px solid rgba(0,255,204,0.2)' }}
-                      >
-                        🤖
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-display text-white font-bold tracking-widest uppercase text-sm mb-0.5">
-                          Play vs AI
-                        </div>
-                        <div className="text-white/40 text-xs font-sans leading-snug">
-                          Single player · Play with AI
-                        </div>
-                      </div>
-                      <span className="text-[#00ffcc]/50 group-hover:text-[#00ffcc] text-lg transition-colors shrink-0">›</span>
-                    </button>
-
-                    {/* Pass & Play */}
-                    <button
-                      onClick={() => handleSelectMode('pass-and-play')}
-                      className="group flex items-center gap-4 w-full p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(138,43,226,0.06), rgba(138,43,226,0.02))',
-                        border: '1px solid rgba(138,43,226,0.2)',
-                      }}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.borderColor = 'rgba(138,43,226,0.55)';
-                        (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(138,43,226,0.11), rgba(138,43,226,0.04))';
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLElement).style.borderColor = 'rgba(138,43,226,0.2)';
-                        (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(138,43,226,0.06), rgba(138,43,226,0.02))';
-                      }}
-                    >
-                      <div
-                        className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center text-2xl"
-                        style={{ background: 'rgba(138,43,226,0.08)', border: '1px solid rgba(138,43,226,0.2)' }}
-                      >
-                        👥
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-display text-white font-bold tracking-widest uppercase text-sm mb-0.5">
-                          Pass &amp; Play
-                        </div>
-                        <div className="text-white/40 text-xs font-sans leading-snug">
-                          2 players · Same device
-                        </div>
-                      </div>
-                      <span className="text-[#8a2be2]/50 group-hover:text-[#8a2be2] text-lg transition-colors shrink-0">›</span>
-                    </button>
-
-                    {/* Online Multiplayer — coming soon */}
-                    <div
-                      className="flex items-center gap-4 w-full p-4 rounded-2xl opacity-40"
-                      style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    >
-                      <div
-                        className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center text-2xl"
-                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                      >
-                        🌐
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-display text-white/60 font-bold tracking-widest uppercase text-sm mb-0.5">
-                          Online Multiplayer
-                        </div>
-                        <div className="text-white/30 text-xs font-sans leading-snug">
-                          Coming soon · Play with anyone worldwide
-                        </div>
-                      </div>
-                      <span
-                        className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded"
-                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.3)' }}
-                      >
-                        Soon
-                      </span>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* PHASE: difficulty-select ───────────────────────────────── */}
-                {phase === 'difficulty-select' && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex flex-col gap-4"
-                  >
-                    <p className="text-center text-white/40 font-mono text-xs uppercase tracking-widest mb-1">
-                      Select Difficulty
-                    </p>
-
-                    {DIFFICULTY_OPTIONS.map(opt => (
+                    {([
+                      {
+                        id: 'ai' as const, emoji: '🤖', label: 'Play vs AI',
+                        sub: 'Single player · Play with AI', accent: '#00ffcc',
+                        bg: 'rgba(0,255,204,0.06)', bgH: 'rgba(0,255,204,0.11)',
+                        border: 'rgba(0,255,204,0.2)', borderH: 'rgba(0,255,204,0.55)',
+                      },
+                      {
+                        id: 'pass-and-play' as const, emoji: '👥', label: 'Pass & Play',
+                        sub: '2 players · Same device', accent: '#8a2be2',
+                        bg: 'rgba(138,43,226,0.06)', bgH: 'rgba(138,43,226,0.11)',
+                        border: 'rgba(138,43,226,0.2)', borderH: 'rgba(138,43,226,0.55)',
+                      },
+                      {
+                        id: 'online' as const, emoji: '🌐', label: 'Online Multiplayer',
+                        sub: 'Real-time · Play worldwide', accent: '#00ffcc',
+                        bg: 'rgba(0,255,204,0.06)', bgH: 'rgba(0,255,204,0.11)',
+                        border: 'rgba(0,255,204,0.2)', borderH: 'rgba(0,255,204,0.55)',
+                      },
+                    ] as const).map(opt => (
                       <button
-                        key={opt.value}
-                        onClick={() => handleSelectDifficulty(opt.value)}
+                        key={opt.id}
+                        onClick={() => handleSelectMode(opt.id)}
                         className="group flex items-center gap-4 w-full p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer"
-                        style={{
-                          background: opt.accentFaint,
-                          border: `1px solid ${opt.accent}33`,
-                        }}
+                        style={{ background: opt.bg, border: `1px solid ${opt.border}` }}
                         onMouseEnter={e => {
-                          (e.currentTarget as HTMLElement).style.borderColor = `${opt.accent}99`;
-                          (e.currentTarget as HTMLElement).style.background   = opt.accentFaint.replace('0.15', '0.25');
+                          (e.currentTarget as HTMLElement).style.borderColor = opt.borderH;
+                          (e.currentTarget as HTMLElement).style.background = opt.bgH;
                         }}
                         onMouseLeave={e => {
-                          (e.currentTarget as HTMLElement).style.borderColor = `${opt.accent}33`;
-                          (e.currentTarget as HTMLElement).style.background   = opt.accentFaint;
+                          (e.currentTarget as HTMLElement).style.borderColor = opt.border;
+                          (e.currentTarget as HTMLElement).style.background = opt.bg;
                         }}
                       >
-                        <div
-                          className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center text-2xl"
-                          style={{ background: `${opt.accent}14`, border: `1px solid ${opt.accent}33` }}
-                        >
+                        <div className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center text-2xl"
+                          style={{ background: `${opt.accent}14`, border: `1px solid ${opt.accent}33` }}>
                           {opt.emoji}
                         </div>
-
-                        {/* Title only — no subtitle */}
                         <div className="flex-1 min-w-0">
-                          <div
-                            className="font-display font-bold tracking-widest uppercase text-base"
-                            style={{ color: opt.accent, textShadow: `0 0 10px ${opt.accent}55` }}
-                          >
+                          <div className="font-display text-white font-bold tracking-widest uppercase text-sm mb-0.5">
                             {opt.label}
                           </div>
+                          <div className="text-white/40 text-xs font-sans leading-snug">{opt.sub}</div>
                         </div>
-
-                        <span
-                          className="text-lg transition-colors shrink-0 group-hover:opacity-100 opacity-50"
-                          style={{ color: opt.accent }}
-                        >
-                          ›
-                        </span>
+                        <span className="text-lg transition-colors shrink-0" style={{ color: `${opt.accent}80` }}>›</span>
                       </button>
                     ))}
                   </motion.div>
                 )}
 
-                {/* PHASE: playing ─────────────────────────────────────────── */}
+                {/* DIFFICULTY SELECT */}
+                {phase === 'difficulty-select' && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                    className="flex flex-col gap-4">
+                    <p className="text-center text-white/40 font-mono text-xs uppercase tracking-widest mb-1">
+                      Select Difficulty
+                    </p>
+                    {DIFFICULTY_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => handleSelectDifficulty(opt.value)}
+                        className="group flex items-center gap-4 w-full p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer"
+                        style={{ background: opt.accentFaint, border: `1px solid ${opt.accent}33` }}
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLElement).style.borderColor = `${opt.accent}99`;
+                          (e.currentTarget as HTMLElement).style.background = opt.accentFaint.replace('0.15', '0.25');
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLElement).style.borderColor = `${opt.accent}33`;
+                          (e.currentTarget as HTMLElement).style.background = opt.accentFaint;
+                        }}
+                      >
+                        <div className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center text-2xl"
+                          style={{ background: `${opt.accent}14`, border: `1px solid ${opt.accent}33` }}>
+                          {opt.emoji}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-display font-bold tracking-widest uppercase text-base"
+                            style={{ color: opt.accent, textShadow: `0 0 10px ${opt.accent}55` }}>
+                            {opt.label}
+                          </div>
+                        </div>
+                        <span className="text-lg shrink-0 opacity-50 group-hover:opacity-100 transition-opacity"
+                          style={{ color: opt.accent }}>›</span>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+
+                {/* LOCAL PLAYING (AI / P&P) */}
                 {phase === 'playing' && mode && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                  >
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                     <TicTacToeGame
                       mode={mode}
                       difficulty={difficulty}
                       onChangeMode={handleChangeMode}
                     />
+                  </motion.div>
+                )}
+
+                {/* ONLINE MULTIPLAYER */}
+                {phase === 'online' && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                    {onlineGameState === null ? (
+                      /* Lobby screens — browse / create / quick-join / join-code / waiting */
+                      <OnlineLobby
+                        onGameStart={handleOnlineGameStart}
+                        onBack={handleOnlineBack}
+                      />
+                    ) : (
+                      /* Real-time game board */
+                      <OnlineGame
+                        initialState={onlineGameState}
+                        onLeave={handleOnlineGameLeave}
+                        onGameEnd={handleOnlineGameEnd}
+                      />
+                    )}
                   </motion.div>
                 )}
               </div>

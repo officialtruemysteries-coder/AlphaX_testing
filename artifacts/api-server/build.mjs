@@ -28,6 +28,11 @@ async function buildAll() {
     // - uses native modules and loads them dynamically (e.g. sharp)
     // - use path traversal to read files (e.g. @google-cloud/secret-manager loads sibling .proto files)
     external: [
+      // Socket.io and its engine have complex dynamic requires; leave them
+      // as runtime dependencies resolved from node_modules.
+      "socket.io",
+      "engine.io",
+      "ws",
       "*.node",
       "sharp",
       "better-sqlite3",

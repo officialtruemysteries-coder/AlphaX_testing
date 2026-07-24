@@ -343,11 +343,14 @@ export function TicTacToeGame({ mode, difficulty = 'normal', onChangeMode }: Tic
   let statusText = '';
   let statusColor = '';
   if (gameResult) {
-    const winnerName = gameResult.winner === 'X' ? 'Player 1' : p2Name;
-    statusText = `${winnerName} wins!`;
+    if (mode === 'ai') {
+      statusText  = gameResult.winner === 'X' ? 'You Win! 🎉' : 'You Lose! 💔';
+    } else {
+      statusText  = gameResult.winner === 'X' ? 'Player 1 Wins! 🎉' : 'Player 2 Wins! 🎉';
+    }
     statusColor = gameResult.winner === 'X' ? '#00ffcc' : '#8a2be2';
   } else if (isDraw) {
-    statusText = "It's a draw!";
+    statusText = "It's a Draw! 🤝";
     statusColor = '#ffffff99';
   } else if (isAiThinking) {
     statusText = 'AI is thinking…';

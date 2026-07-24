@@ -7,6 +7,7 @@ import { OnlineGame } from './OnlineGame';
 import {
   getOrCreatePlayerId,
   applyXPGain,
+  awardSessionXP,
   BADGE_DEFS,
 } from '../lib/playerProfile';
 import type { BadgeId } from '../lib/playerProfile';
@@ -134,8 +135,8 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
   // Online game state — set by OnlineLobby once both players are in room
   const [onlineGameState, setOnlineGameState] = useState<OnlineGameState | null>(null);
 
-  // ── Badge unlock sound ────────────────────────────────────────────────────
-  const { playBadgeUnlock } = useGameSounds();
+  // ── Sounds ───────────────────────────────────────────────────────────────
+  const { playBadgeUnlock, playXPChime } = useGameSounds();
 
   // ── Toast queue ───────────────────────────────────────────────────────────
   // Toasts stack vertically in a fixed container at the top-center of the screen.
@@ -151,10 +152,13 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
     }, 3_400);
   }, []);
 
-  const showXpToast = useCallback((gained: number) => pushToast({ type: 'xp', gained }), [pushToast]);
+  const showXpToast = useCallback((gained: number) => {
+    pushToast({ type: 'xp', gained });
+    playXPChime(); // soft sparkle on every XP award
+  }, [pushToast, playXPChime]);
   const showBadgeToast = useCallback((badgeName: string) => {
     pushToast({ type: 'badge', badgeName });
-    playBadgeUnlock(); // soft sparkle chime on every badge unlock
+    playBadgeUnlock(); // sparkle chime on badge unlock
   }, [pushToast, playBadgeUnlock]);
 
   // ── Hidden game timer refs (for AI / P&P modes) ──────────────────────────
@@ -206,6 +210,25 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
       const result = applyXPGain(gained);
       showXpToast(result.gained);
       // Show badge unlock notification for each newly unlocked badge
+      for (const id of result.newBadges) {
+        showBadgeToast(BADGE_DEFS[id].name);
+      }
+    }
+  }, [showXpToast, showBadgeToast]);
+
+  // ── Immediate XP award for local game end (AI / Pass & Play) ─────────────
+  // Called by TicTacToeGame the moment any game concludes (win/lose/draw).
+  // Uses synchronous local XP so the toast appears instantly — no server
+  // round-trip required.  Also nulls the async timer refs so that leaving
+  // the modal afterwards never triggers a duplicate award.
+  const handleLocalGameEnd = useCallback(() => {
+    // Invalidate the server-timer path so awardGameXP is a no-op on leave
+    gameTokenRef.current = null;
+    gameStartRef.current = null;
+
+    const result = awardSessionXP();
+    if (result.gained > 0) {
+      showXpToast(result.gained);
       for (const id of result.newBadges) {
         showBadgeToast(BADGE_DEFS[id].name);
       }
@@ -522,6 +545,7 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
                       mode={mode}
                       difficulty={difficulty}
                       onChangeMode={handleChangeMode}
+                      onGameEnd={handleLocalGameEnd}
                     />
                   </motion.div>
                 )}

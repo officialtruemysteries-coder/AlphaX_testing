@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, ArrowLeft } from 'lucide-react';
 import { useGameSounds } from '../hooks/useGameSounds';
@@ -243,9 +243,11 @@ interface TicTacToeGameProps {
   mode: GameMode;
   difficulty?: Difficulty;
   onChangeMode: () => void;
+  /** Called immediately when any game concludes (win, lose, or draw). */
+  onGameEnd?: () => void;
 }
 
-export function TicTacToeGame({ mode, difficulty = 'normal', onChangeMode }: TicTacToeGameProps) {
+export function TicTacToeGame({ mode, difficulty = 'normal', onChangeMode, onGameEnd }: TicTacToeGameProps) {
   const [board, setBoard] = useState<Cell[]>(Array(9).fill(null));
   const [currentPlayer, setCurrentPlayer] = useState<'X' | 'O'>('X');
   const [gameResult, setGameResult] = useState<{ winner: 'X' | 'O'; line: number[] } | null>(null);
@@ -255,12 +257,23 @@ export function TicTacToeGame({ mode, difficulty = 'normal', onChangeMode }: Tic
 
   const { playMove, playLineComplete, playVictory, playDefeat, playDraw } = useGameSounds();
 
+  // Guard: fire onGameEnd exactly once per round; reset when a new round begins
+  const gameEndedRef = useRef(false);
+
+  const notifyGameEnd = useCallback(() => {
+    if (!gameEndedRef.current) {
+      gameEndedRef.current = true;
+      onGameEnd?.();
+    }
+  }, [onGameEnd]);
+
   const resetBoard = useCallback(() => {
     setBoard(Array(9).fill(null));
     setCurrentPlayer('X');
     setGameResult(null);
     setIsDraw(false);
     setIsAiThinking(false);
+    gameEndedRef.current = false; // allow XP award for the next round
   }, []);
 
   const handleResetScores = useCallback(() => {
@@ -304,9 +317,11 @@ export function TicTacToeGame({ mode, difficulty = 'normal', onChangeMode }: Tic
       if (result) {
         setGameResult(result);
         setScores(s => ({ ...s, [result.winner]: s[result.winner] + 1 }));
+        notifyGameEnd();
       } else if (newBoard.every(c => c !== null)) {
         setIsDraw(true);
         setScores(s => ({ ...s, draw: s.draw + 1 }));
+        notifyGameEnd();
       } else {
         setCurrentPlayer('X');
       }
@@ -330,9 +345,11 @@ export function TicTacToeGame({ mode, difficulty = 'normal', onChangeMode }: Tic
     if (result) {
       setGameResult(result);
       setScores(s => ({ ...s, [result.winner]: s[result.winner] + 1 }));
+      notifyGameEnd();
     } else if (newBoard.every(c => c !== null)) {
       setIsDraw(true);
       setScores(s => ({ ...s, draw: s.draw + 1 }));
+      notifyGameEnd();
     } else {
       setCurrentPlayer(currentPlayer === 'X' ? 'O' : 'X');
     }

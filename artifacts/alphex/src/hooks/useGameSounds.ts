@@ -4,6 +4,15 @@ import { useRef, useCallback } from 'react';
 // All sounds are synthesised programmatically — no audio files required.
 // The AudioContext is created lazily on the first sound call so we stay
 // within browser autoplay policies (user must have interacted first).
+//
+// VOLUME LEVELS (~35% of original values so voice clips sit clearly on top):
+//   playMove          0.05   (was 0.13)
+//   playLineComplete  0.07   (was 0.18)
+//   playVictory       0.06   (was 0.17)
+//   playDefeat        0.05   (was 0.13)
+//   playDraw          0.05   (was 0.13)
+//   playXPChime       0.04   (was 0.07)
+//   playBadgeUnlock   0.032  (was 0.065)
 
 export function useGameSounds() {
   const ctxRef = useRef<AudioContext | null>(null);
@@ -31,7 +40,7 @@ export function useGameSounds() {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(1100, t);
       osc.frequency.exponentialRampToValueAtTime(550, t + 0.07);
-      gain.gain.setValueAtTime(0.13, t);
+      gain.gain.setValueAtTime(0.05, t);
       gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
       osc.start(t);
       osc.stop(t + 0.1);
@@ -52,7 +61,7 @@ export function useGameSounds() {
         gain.connect(c.destination);
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, t + i * 0.06);
-        gain.gain.setValueAtTime(0.18, t + i * 0.06);
+        gain.gain.setValueAtTime(0.07, t + i * 0.06);
         gain.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.06 + 0.35);
         osc.start(t + i * 0.06);
         osc.stop(t + i * 0.06 + 0.4);
@@ -76,7 +85,7 @@ export function useGameSounds() {
         gain.connect(c.destination);
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, t + offset + i * 0.11);
-        gain.gain.setValueAtTime(0.17, t + offset + i * 0.11);
+        gain.gain.setValueAtTime(0.06, t + offset + i * 0.11);
         gain.gain.exponentialRampToValueAtTime(0.0001, t + offset + i * 0.11 + 0.42);
         osc.start(t + offset + i * 0.11);
         osc.stop(t + offset + i * 0.11 + 0.5);
@@ -99,7 +108,7 @@ export function useGameSounds() {
         gain.connect(c.destination);
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, t + offset + i * 0.14);
-        gain.gain.setValueAtTime(0.13, t + offset + i * 0.14);
+        gain.gain.setValueAtTime(0.05, t + offset + i * 0.14);
         gain.gain.exponentialRampToValueAtTime(0.0001, t + offset + i * 0.14 + 0.45);
         osc.start(t + offset + i * 0.14);
         osc.stop(t + offset + i * 0.14 + 0.5);
@@ -127,7 +136,7 @@ export function useGameSounds() {
       gain.connect(c.destination);
       osc.type = 'sine';
       osc.frequency.setValueAtTime(440, t);
-      gain.gain.setValueAtTime(0.13, t);
+      gain.gain.setValueAtTime(0.05, t);
       gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
 
       lfo.start(t);
@@ -155,7 +164,7 @@ export function useGameSounds() {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, t + i * 0.075);
         gain.gain.setValueAtTime(0.0,    t + i * 0.075);
-        gain.gain.linearRampToValueAtTime(0.07, t + i * 0.075 + 0.018);
+        gain.gain.linearRampToValueAtTime(0.04, t + i * 0.075 + 0.018);
         gain.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.075 + 0.21);
         osc.start(t + i * 0.075);
         osc.stop(t  + i * 0.075 + 0.23);
@@ -181,7 +190,7 @@ export function useGameSounds() {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, t + i * 0.08);
         gain.gain.setValueAtTime(0.0,     t + i * 0.08);
-        gain.gain.linearRampToValueAtTime(0.065, t + i * 0.08 + 0.015);
+        gain.gain.linearRampToValueAtTime(0.032, t + i * 0.08 + 0.015);
         gain.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.08 + 0.28);
         osc.start(t + i * 0.08);
         osc.stop(t  + i * 0.08 + 0.30);
@@ -195,7 +204,7 @@ export function useGameSounds() {
       shimmer.type = 'triangle';
       shimmer.frequency.setValueAtTime(1567.98, t);
       shimGain.gain.setValueAtTime(0.0,   t);
-      shimGain.gain.linearRampToValueAtTime(0.028, t + 0.02);
+      shimGain.gain.linearRampToValueAtTime(0.014, t + 0.02);
       shimGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.46);
       shimmer.start(t);
       shimmer.stop(t + 0.47);

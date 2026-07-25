@@ -3,11 +3,13 @@ import { Link, useLocation } from 'wouter';
 import { useActiveUsers } from '../hooks/useActiveUsers';
 import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LegalModal } from './LegalModal';
 
 export function Navbar() {
   const [location] = useLocation();
   const { activeUsers } = useActiveUsers();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showLegal,        setShowLegal]        = useState(false);
 
   const links = [
     { path: '/', label: 'Home' },
@@ -48,6 +50,15 @@ export function Navbar() {
                 </Link>
               );
             })}
+            {/* Terms & Legal — opens modal, styled to match nav links */}
+            <button
+              onClick={() => setShowLegal(true)}
+              className="px-5 py-2 rounded-full font-display text-sm tracking-widest uppercase
+                         transition-all duration-300 text-muted-foreground hover:text-white
+                         hover:bg-white/5 border border-transparent cursor-pointer"
+            >
+              Legal
+            </button>
           </nav>
 
           {/* Right: Live Users Badge */}
@@ -98,6 +109,16 @@ export function Navbar() {
                 );
               })}
               
+              {/* Terms & Legal — mobile menu entry */}
+              <button
+                onClick={() => { setShowLegal(true); setIsMobileMenuOpen(false); }}
+                className="w-full text-center px-4 py-3 rounded-lg font-display tracking-widest
+                           uppercase text-sm border border-border text-muted-foreground
+                           hover:border-primary/40 hover:text-white transition-colors cursor-pointer"
+              >
+                Terms &amp; Legal Notice
+              </button>
+
               <div className="mt-4 flex items-center justify-center gap-2 bg-black/40 border border-border rounded-lg px-4 py-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_5px_rgba(74,222,128,0.8)] animate-pulse" />
                 <span className="text-sm font-mono text-muted-foreground">
@@ -108,6 +129,8 @@ export function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Legal modal — shared between desktop and mobile triggers */}
+      <LegalModal isOpen={showLegal} onClose={() => setShowLegal(false)} />
     </>
   );
 }

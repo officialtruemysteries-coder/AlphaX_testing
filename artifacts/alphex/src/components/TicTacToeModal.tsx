@@ -14,6 +14,7 @@ import type { BadgeId } from '../lib/playerProfile';
 import { disconnectSocket } from '../lib/socket';
 import type { OnlineGameState } from '../lib/onlineTypes';
 import { useGameSounds } from '../hooks/useGameSounds';
+import { useVoiceAudio } from '../hooks/useVoiceAudio';
 
 interface TicTacToeModalProps {
   isOpen: boolean;
@@ -137,6 +138,7 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
 
   // ── Sounds ───────────────────────────────────────────────────────────────
   const { playBadgeUnlock, playXPChime } = useGameSounds();
+  const { play: playVoice } = useVoiceAudio();
 
   // ── Toast queue ───────────────────────────────────────────────────────────
   // Toasts stack vertically in a fixed container at the top-center of the screen.
@@ -234,6 +236,15 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
       }
     }
   }, [showXpToast, showBadgeToast]);
+
+  // ── Voice outcome for AI mode only ───────────────────────────────────────
+  // X = human (plays win), O = AI (plays lose), draw = draw.
+  // Pass & Play receives undefined for onOutcome so voice is completely bypassed.
+  const handleLocalOutcome = useCallback((winner: 'X' | 'O' | 'draw') => {
+    if (winner === 'X') playVoice('win');
+    else if (winner === 'O') playVoice('lose');
+    else playVoice('draw');
+  }, [playVoice]);
 
   // ── Online game end handler ───────────────────────────────────────────────
   // Called by OnlineGame when a match concludes. Receives the XP + badges
@@ -546,6 +557,7 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
                       difficulty={difficulty}
                       onChangeMode={handleChangeMode}
                       onGameEnd={handleLocalGameEnd}
+                      onOutcome={mode === 'ai' ? handleLocalOutcome : undefined}
                     />
                   </motion.div>
                 )}

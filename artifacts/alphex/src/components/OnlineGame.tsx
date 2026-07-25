@@ -19,6 +19,7 @@ import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { getSocket } from '../lib/socket';
 import { useGameSounds } from '../hooks/useGameSounds';
 import { awardSessionXP } from '../lib/playerProfile';
+import { useVoiceAudio } from '../hooks/useVoiceAudio';
 import type { BadgeId } from '../lib/playerProfile';
 import type { OnlineGameState, Cell } from '../lib/onlineTypes';
 
@@ -173,19 +174,29 @@ export function OnlineGame({ initialState, onLeave, onGameEnd }: OnlineGameProps
   const xpAwardedRef = useRef(false);
 
   const { playMove, playLineComplete, playVictory, playDefeat, playDraw } = useGameSounds();
+  const { play: playVoice } = useVoiceAudio();
 
-  // ── Award XP once when the game concludes (any outcome) ──────────────────
+  // ── Award XP + play per-device voice once when game concludes ────────────
   useEffect(() => {
     const gameOver = !!gameResult || isDraw || opponentLeft;
     if (!gameOver || xpAwardedRef.current) return;
     xpAwardedRef.current = true;
 
+    // Per-device voice: each player hears their own result in isolation
+    if (opponentLeft || gameResult?.winner === mySymbol) {
+      playVoice('win');
+    } else if (gameResult) {
+      playVoice('lose');
+    } else if (isDraw) {
+      playVoice('draw');
+    }
+
     const result = awardSessionXP();
     if (result.gained > 0) {
       onGameEnd?.({ gained: result.gained, newBadges: result.newBadges });
     }
-  // onGameEnd is stable (useCallback in parent) — safe to include
-  }, [gameResult, isDraw, opponentLeft, onGameEnd]);
+  // onGameEnd and playVoice are stable — safe to include
+  }, [gameResult, isDraw, opponentLeft, onGameEnd, mySymbol, playVoice]);
 
   // ── Socket event listeners ────────────────────────────────────────────────
   useEffect(() => {

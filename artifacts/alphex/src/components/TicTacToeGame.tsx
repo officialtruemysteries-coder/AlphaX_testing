@@ -245,9 +245,11 @@ interface TicTacToeGameProps {
   onChangeMode: () => void;
   /** Called immediately when any game concludes (win, lose, or draw). */
   onGameEnd?: () => void;
+  /** Raw winner/draw for per-mode voice routing. Not passed in Pass & Play. */
+  onOutcome?: (winner: 'X' | 'O' | 'draw') => void;
 }
 
-export function TicTacToeGame({ mode, difficulty = 'normal', onChangeMode, onGameEnd }: TicTacToeGameProps) {
+export function TicTacToeGame({ mode, difficulty = 'normal', onChangeMode, onGameEnd, onOutcome }: TicTacToeGameProps) {
   const [board, setBoard] = useState<Cell[]>(Array(9).fill(null));
   const [currentPlayer, setCurrentPlayer] = useState<'X' | 'O'>('X');
   const [gameResult, setGameResult] = useState<{ winner: 'X' | 'O'; line: number[] } | null>(null);
@@ -260,12 +262,13 @@ export function TicTacToeGame({ mode, difficulty = 'normal', onChangeMode, onGam
   // Guard: fire onGameEnd exactly once per round; reset when a new round begins
   const gameEndedRef = useRef(false);
 
-  const notifyGameEnd = useCallback(() => {
+  const notifyGameEnd = useCallback((winner: 'X' | 'O' | 'draw') => {
     if (!gameEndedRef.current) {
       gameEndedRef.current = true;
       onGameEnd?.();
+      onOutcome?.(winner);
     }
-  }, [onGameEnd]);
+  }, [onGameEnd, onOutcome]);
 
   const resetBoard = useCallback(() => {
     setBoard(Array(9).fill(null));
@@ -317,11 +320,11 @@ export function TicTacToeGame({ mode, difficulty = 'normal', onChangeMode, onGam
       if (result) {
         setGameResult(result);
         setScores(s => ({ ...s, [result.winner]: s[result.winner] + 1 }));
-        notifyGameEnd();
+        notifyGameEnd(result.winner);
       } else if (newBoard.every(c => c !== null)) {
         setIsDraw(true);
         setScores(s => ({ ...s, draw: s.draw + 1 }));
-        notifyGameEnd();
+        notifyGameEnd('draw');
       } else {
         setCurrentPlayer('X');
       }
@@ -345,11 +348,11 @@ export function TicTacToeGame({ mode, difficulty = 'normal', onChangeMode, onGam
     if (result) {
       setGameResult(result);
       setScores(s => ({ ...s, [result.winner]: s[result.winner] + 1 }));
-      notifyGameEnd();
+      notifyGameEnd(result.winner);
     } else if (newBoard.every(c => c !== null)) {
       setIsDraw(true);
       setScores(s => ({ ...s, draw: s.draw + 1 }));
-      notifyGameEnd();
+      notifyGameEnd('draw');
     } else {
       setCurrentPlayer(currentPlayer === 'X' ? 'O' : 'X');
     }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Shield, Volume2, AlertTriangle } from 'lucide-react';
+import { X, Shield, Lock, Volume2, AlertTriangle } from 'lucide-react';
 
 interface LegalModalProps {
   isOpen: boolean;
@@ -30,7 +30,7 @@ export function LegalModal({ isOpen, onClose }: LegalModalProps) {
             transition={{ type: 'spring', stiffness: 320, damping: 28 }}
             className="relative w-full flex flex-col"
             style={{
-              maxWidth: 580,
+              maxWidth: 600,
               maxHeight: 'calc(100dvh - 2rem)',
               background: 'linear-gradient(160deg, #0d1520 0%, #090d13 100%)',
               border: '1px solid rgba(0,255,204,0.18)',
@@ -50,7 +50,7 @@ export function LegalModal({ isOpen, onClose }: LegalModalProps) {
                   className="font-display text-sm font-bold uppercase tracking-widest"
                   style={{ color: '#00ffcc', textShadow: '0 0 10px rgba(0,255,204,0.35)' }}
                 >
-                  Terms &amp; Legal Notice
+                  Terms &amp; Conditions
                 </h2>
               </div>
               <button
@@ -74,42 +74,61 @@ export function LegalModal({ isOpen, onClose }: LegalModalProps) {
                 <SectionHead icon={<Shield size={12} />} label="A. Intellectual Property &amp; Brand Protection" />
                 <div className="mt-3 space-y-3.5">
                   <LegalEntry
-                    term="Brand Identity"
-                    text='All visual branding, including the official "AlphaX" name, color grading, stylized wordmarks, watermarked graphics, user interface layouts, and official logos, are protected intellectual property.'
+                    term="Brand Ownership"
+                    text='All visual assets, graphic elements, stylized wordmarks, color schemes, user interface designs, and the official "AlphaX" brand identity are protected intellectual property.'
                   />
                   <LegalEntry
-                    term="Unauthorized Distribution &amp; Mirroring"
-                    text="Unapproved copying, hosting, repackaging into mobile APKs, iframe embedding, or claiming ownership of this website, its game assets, or sound effects on third-party platforms is strictly prohibited."
+                    term="Unauthorized Mirroring &amp; Distribution"
+                    text="Copying, mirroring, re-hosting, embedding via iframe, or distributing this web application, its codebase, or its visual assets on unauthorized third-party platforms is strictly prohibited without explicit written consent."
+                    html
                   />
                 </div>
               </section>
 
-              {/* B. Audio Attribution */}
+              {/* B. Platform Integrity */}
               <section>
-                <SectionHead icon={<Volume2 size={12} />} label="B. Audio &amp; Third-Party Asset Attribution" />
+                <SectionHead icon={<Lock size={12} />} label="B. Platform Integrity, Anti-Tampering &amp; Usage Restrictions" />
+                <div className="mt-3 space-y-3.5">
+                  <LegalEntry
+                    term="Prohibited Modifications"
+                    text='Users and third parties are strictly forbidden from creating, hosting, patching, or distributing modified or altered versions of this application (including, but not limited to, Modded APKs, "Unlimited XP" cracks, injected client scripts, or unauthorized web mirrors).'
+                  />
+                  <LegalEntry
+                    term="Security &amp; Fair Play"
+                    text="Attempting to reverse-engineer game logic, exploit multiplayer communication protocols, manipulate leaderboard rankings, or inject malicious payloads into the system will result in permanent IP restriction and potential legal action."
+                    html
+                  />
+                </div>
+              </section>
+
+              {/* C. Audio Attribution */}
+              <section>
+                <SectionHead icon={<Volume2 size={12} />} label="C. Audio &amp; Third-Party Asset Attribution" />
                 <div className="mt-3 space-y-3.5">
                   <LegalEntry
                     term="Voice Synthesis"
-                    text="Match outcome voice announcements (win.mp3, lose.mp3, draw.mp3) utilized across game modes are generated using voice synthesis models powered by ElevenLabs (ElevenLabs.io)."
+                    text="Match outcome voice announcements (win.mp3, lose.mp3, draw.mp3) utilized across single-player and multiplayer modes are generated using voice synthesis technology powered by ElevenLabs (ElevenLabs.io)."
                   />
                   <LegalEntry
-                    term="Audio Licensing Notice"
-                    text="Voice synthesis assets provided via ElevenLabs are integrated in compliance with platform usage standards and creative attribution protocols. All sound effects, music tracks, and voice assets belong to their respective creators and licensors."
+                    term="Licensing Compliance"
+                    text="Third-party audio elements and voice synthesis assets provided via ElevenLabs are integrated in strict compliance with platform usage terms and attribution requirements. All background sound effects, board chimes, and media assets remain the property of their respective creators."
                   />
                 </div>
               </section>
 
-              {/* C. Disclaimer */}
+              {/* D. Disclaimer */}
               <section>
-                <SectionHead icon={<AlertTriangle size={12} />} label="C. Disclaimer of Liability" />
-                <p
-                  className="mt-3 font-mono text-[11px] leading-relaxed"
-                  style={{ color: 'rgba(255,255,255,0.40)' }}
-                >
-                  AlphaX is provided on an &ldquo;as-is&rdquo; basis for gaming and entertainment purposes.
-                  We reserve the right to modify game assets, audio configurations, and platform
-                  functionality at any time without prior notice.
-                </p>
+                <SectionHead icon={<AlertTriangle size={12} />} label="D. Disclaimer of Liability" />
+                <div className="mt-3 space-y-3.5">
+                  <LegalEntry
+                    term="Service Provision"
+                    text='AlphaX is provided on an "as-is" and "as-available" basis for casual gaming and entertainment purposes.'
+                  />
+                  <LegalEntry
+                    term="Modifications"
+                    text="The developers reserve the right to update game mechanics, modify audio assets, change ranking algorithms, or alter platform features at any time without prior obligation or liability."
+                  />
+                </div>
               </section>
 
               {/* Footer */}
@@ -145,7 +164,7 @@ function SectionHead({ icon, label }: { icon: React.ReactNode; label: string }) 
   );
 }
 
-function LegalEntry({ term, text }: { term: string; text: string }) {
+function LegalEntry({ term, text, html = false }: { term: string; text: string; html?: boolean }) {
   return (
     <div className="space-y-1">
       <p
@@ -153,12 +172,20 @@ function LegalEntry({ term, text }: { term: string; text: string }) {
         style={{ color: 'rgba(255,255,255,0.55)' }}
         dangerouslySetInnerHTML={{ __html: term }}
       />
-      <p
-        className="font-mono text-[11px] leading-relaxed"
-        style={{ color: 'rgba(255,255,255,0.35)' }}
-      >
-        {text}
-      </p>
+      {html ? (
+        <p
+          className="font-mono text-[11px] leading-relaxed"
+          style={{ color: 'rgba(255,255,255,0.35)' }}
+          dangerouslySetInnerHTML={{ __html: text }}
+        />
+      ) : (
+        <p
+          className="font-mono text-[11px] leading-relaxed"
+          style={{ color: 'rgba(255,255,255,0.35)' }}
+        >
+          {text}
+        </p>
+      )}
     </div>
   );
 }

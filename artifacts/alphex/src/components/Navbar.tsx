@@ -50,14 +50,14 @@ export function Navbar() {
                 </Link>
               );
             })}
-            {/* Terms & Legal — opens modal, styled to match nav links */}
+            {/* Terms & Conditions — opens modal, styled to match nav links */}
             <button
               onClick={() => setShowLegal(true)}
               className="px-5 py-2 rounded-full font-display text-sm tracking-widest uppercase
                          transition-all duration-300 text-muted-foreground hover:text-white
                          hover:bg-white/5 border border-transparent cursor-pointer"
             >
-              Legal
+              Terms
             </button>
           </nav>
 
@@ -109,14 +109,14 @@ export function Navbar() {
                 );
               })}
               
-              {/* Terms & Legal — mobile menu entry */}
+              {/* Terms & Conditions — mobile menu entry */}
               <button
                 onClick={() => { setShowLegal(true); setIsMobileMenuOpen(false); }}
                 className="w-full text-center px-4 py-3 rounded-lg font-display tracking-widest
                            uppercase text-sm border border-border text-muted-foreground
                            hover:border-primary/40 hover:text-white transition-colors cursor-pointer"
               >
-                Terms &amp; Legal Notice
+                Terms &amp; Conditions
               </button>
 
               <div className="mt-4 flex items-center justify-center gap-2 bg-black/40 border border-border rounded-lg px-4 py-3">

@@ -101,6 +101,55 @@
     backface-visibility: hidden;
     will-change: transform;
   }
+
+  /* Game-mode icon — crisp on all DPIs, no blur */
+  .icon-crisp {
+    object-fit: contain;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: high-quality;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* ── Voice mic pulse ring ─────────────────────────────────────────────────── */
+@keyframes mic-ring-cyan {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0   rgba(0,255,204,0.55),
+      0 0 0 4px rgba(0,255,204,0.22),
+      0 0 14px  rgba(0,255,204,0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px  rgba(0,255,204,0.45),
+      0 0 0 10px rgba(0,255,204,0.12),
+      0 0 22px   rgba(0,255,204,0.50);
+  }
+}
+
+@keyframes mic-ring-red {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0   rgba(239,68,68,0.55),
+      0 0 0 4px rgba(239,68,68,0.22),
+      0 0 14px  rgba(239,68,68,0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px  rgba(239,68,68,0.45),
+      0 0 0 10px rgba(239,68,68,0.12),
+      0 0 22px   rgba(239,68,68,0.50);
+  }
+}
+
+.mic-pulse-cyan {
+  animation: mic-ring-cyan 1.2s ease-in-out infinite;
+}
+
+.mic-pulse-red {
+  animation: mic-ring-red 0.7s ease-in-out infinite;
 }
 
 @keyframes neonPulse {

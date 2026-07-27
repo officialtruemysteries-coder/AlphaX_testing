@@ -496,12 +496,13 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
                       >
                         <div
                           className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
-                          style={{ background: `${opt.accent}14`, border: `1px solid ${opt.accent}33`, padding: '10px' }}
+                          style={{ background: `${opt.accent}14`, border: `1px solid ${opt.accent}33`, padding: '8px' }}
                         >
                           <img
                             src={opt.icon}
                             alt={opt.label}
-                            style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto', display: 'block' }}
+                            loading="eager"
+                            className="icon-crisp"
                           />
                         </div>
                         <div className="flex-1 min-w-0">

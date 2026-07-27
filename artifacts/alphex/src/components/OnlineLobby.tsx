@@ -350,10 +350,10 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
         >
           <div
             className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(0,255,204,0.08)', border: '1px solid rgba(0,255,204,0.2)', padding: '12px' }}
+            style={{ background: 'rgba(0,255,204,0.08)', border: '1px solid rgba(0,255,204,0.2)', padding: '8px' }}
           >
             <img src="/assets/icons/icon_browse_rooms.png" alt="Browse Rooms"
-              style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto', display: 'block' }} />
+              loading="eager" className="icon-crisp" />
           </div>
           <div className="flex-1">
             <div className="font-display text-white font-bold tracking-widest uppercase text-sm">Browse Public Rooms</div>
@@ -372,10 +372,10 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
         >
           <div
             className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(0,255,204,0.08)', border: '1px solid rgba(0,255,204,0.2)', padding: '12px' }}
+            style={{ background: 'rgba(0,255,204,0.08)', border: '1px solid rgba(0,255,204,0.2)', padding: '8px' }}
           >
             <img src="/assets/icons/icon_quick_join.png" alt="Quick Join"
-              style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto', display: 'block' }} />
+              loading="eager" className="icon-crisp" />
           </div>
           <div className="flex-1">
             <div className="font-display text-white font-bold tracking-widest uppercase text-sm">Quick Join</div>
@@ -394,10 +394,10 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
         >
           <div
             className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(138,43,226,0.08)', border: '1px solid rgba(138,43,226,0.2)', padding: '12px' }}
+            style={{ background: 'rgba(138,43,226,0.08)', border: '1px solid rgba(138,43,226,0.2)', padding: '8px' }}
           >
             <img src="/assets/icons/icon_create_room.png" alt="Create Room"
-              style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto', display: 'block' }} />
+              loading="eager" className="icon-crisp" />
           </div>
           <div className="flex-1">
             <div className="font-display text-white font-bold tracking-widest uppercase text-sm">Create Room</div>
@@ -416,10 +416,10 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
         >
           <div
             className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(138,43,226,0.08)', border: '1px solid rgba(138,43,226,0.2)', padding: '12px' }}
+            style={{ background: 'rgba(138,43,226,0.08)', border: '1px solid rgba(138,43,226,0.2)', padding: '8px' }}
           >
             <img src="/assets/icons/icon_room_code.png" alt="Room Code"
-              style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto', display: 'block' }} />
+              loading="eager" className="icon-crisp" />
           </div>
           <div className="flex-1">
             <div className="font-display text-white font-bold tracking-widest uppercase text-sm">Join via Room Code</div>

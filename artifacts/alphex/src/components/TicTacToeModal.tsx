@@ -496,7 +496,7 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
                       >
                         <div
                           className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
-                          style={{ background: `${opt.accent}14`, border: `1px solid ${opt.accent}33`, padding: '8px' }}
+                          style={{ background: `${opt.accent}14`, border: `1px solid ${opt.accent}33`, padding: '4px' }}
                         >
                           <img
                             src={opt.icon}

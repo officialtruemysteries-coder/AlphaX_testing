@@ -14,7 +14,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Check, RefreshCw, Loader2 } from 'lucide-react';
+import { Copy, Check, RefreshCw, Loader2, Lock, Globe, AlertTriangle } from 'lucide-react';
 import { getSocket } from '../lib/socket';
 import {
   getOrCreatePlayerId,
@@ -348,9 +348,12 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.5)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.18)'; }}
         >
-          <div className="w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-2xl"
-            style={{ background: 'rgba(0,255,204,0.08)', border: '1px solid rgba(0,255,204,0.2)' }}>
-            🌐
+          <div
+            className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(0,255,204,0.08)', border: '1px solid rgba(0,255,204,0.2)', padding: '12px' }}
+          >
+            <img src="/assets/icons/icon_browse_rooms.png" alt="Browse Rooms"
+              style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto', display: 'block' }} />
           </div>
           <div className="flex-1">
             <div className="font-display text-white font-bold tracking-widest uppercase text-sm">Browse Public Rooms</div>
@@ -367,9 +370,12 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.5)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.18)'; }}
         >
-          <div className="w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-2xl"
-            style={{ background: 'rgba(0,255,204,0.08)', border: '1px solid rgba(0,255,204,0.2)' }}>
-            ⚡
+          <div
+            className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(0,255,204,0.08)', border: '1px solid rgba(0,255,204,0.2)', padding: '12px' }}
+          >
+            <img src="/assets/icons/icon_quick_join.png" alt="Quick Join"
+              style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto', display: 'block' }} />
           </div>
           <div className="flex-1">
             <div className="font-display text-white font-bold tracking-widest uppercase text-sm">Quick Join</div>
@@ -386,9 +392,12 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(138,43,226,0.5)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(138,43,226,0.18)'; }}
         >
-          <div className="w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-2xl"
-            style={{ background: 'rgba(138,43,226,0.08)', border: '1px solid rgba(138,43,226,0.2)' }}>
-            ➕
+          <div
+            className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(138,43,226,0.08)', border: '1px solid rgba(138,43,226,0.2)', padding: '12px' }}
+          >
+            <img src="/assets/icons/icon_create_room.png" alt="Create Room"
+              style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto', display: 'block' }} />
           </div>
           <div className="flex-1">
             <div className="font-display text-white font-bold tracking-widest uppercase text-sm">Create Room</div>
@@ -405,9 +414,12 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(138,43,226,0.5)'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(138,43,226,0.18)'; }}
         >
-          <div className="w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-2xl"
-            style={{ background: 'rgba(138,43,226,0.08)', border: '1px solid rgba(138,43,226,0.2)' }}>
-            🔑
+          <div
+            className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(138,43,226,0.08)', border: '1px solid rgba(138,43,226,0.2)', padding: '12px' }}
+          >
+            <img src="/assets/icons/icon_room_code.png" alt="Room Code"
+              style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto', display: 'block' }} />
           </div>
           <div className="flex-1">
             <div className="font-display text-white font-bold tracking-widest uppercase text-sm">Join via Room Code</div>
@@ -440,10 +452,10 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
 
         {rooms.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-8 text-white/30">
-            <span className="text-3xl">🌐</span>
+            <Globe size={32} style={{ color: 'rgba(0,255,204,0.3)' }} />
             <span className="text-xs font-mono">No open rooms right now</span>
             <NeonButton onClick={handleQuickJoin} small>
-              ⚡ Quick Join (Create New)
+              Quick Join (Create New)
             </NeonButton>
           </div>
         ) : (
@@ -499,8 +511,12 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
           style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           <div>
-            <div className="text-white/80 text-sm font-display tracking-wider uppercase font-bold">
-              {isPrivate ? '🔒 Private' : '🌐 Public'}
+            <div className="flex items-center gap-1.5 text-white/80 text-sm font-display tracking-wider uppercase font-bold">
+              {isPrivate
+                ? <Lock size={12} style={{ color: 'rgba(138,43,226,0.85)', flexShrink: 0 }} />
+                : <Globe size={12} style={{ color: 'rgba(0,255,204,0.85)', flexShrink: 0 }} />
+              }
+              {isPrivate ? 'Private' : 'Public'}
             </div>
             <div className="text-white/35 text-xs font-sans mt-0.5">
               {isPrivate ? 'Hidden from list · Code only' : 'Visible in the public room list'}
@@ -529,7 +545,10 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
         </div>
 
         <NeonButton onClick={handleCreateRoom}>
-          {isPrivate ? '🔒 Create Private Room' : '🌐 Create Public Room'}
+          {isPrivate
+            ? <><Lock size={13} style={{ flexShrink: 0 }} /> Create Private Room</>
+            : <><Globe size={13} style={{ flexShrink: 0 }} /> Create Public Room</>
+          }
         </NeonButton>
 
         <button onClick={() => setPhase('main')} className="text-white/30 hover:text-white/60 text-xs font-mono text-center transition-colors cursor-pointer">
@@ -580,7 +599,7 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
                 boxShadow: '0 0 16px rgba(239,68,68,0.08)',
               }}
             >
-              <span className="text-base shrink-0 mt-px">⚠️</span>
+              <AlertTriangle size={15} className="shrink-0 mt-px" style={{ color: 'rgba(252,165,165,0.9)', flexShrink: 0 }} />
               <p
                 className="text-sm font-sans leading-snug"
                 style={{ color: 'rgba(252,165,165,0.9)', textShadow: '0 0 8px rgba(239,68,68,0.3)' }}
@@ -592,7 +611,7 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
         </AnimatePresence>
 
         <NeonButton onClick={handleJoinByCode} disabled={joining === 'code'}>
-          {joining === 'code' ? <Loader2 size={14} className="animate-spin" /> : '🔑 Join Room'}
+          {joining === 'code' ? <Loader2 size={14} className="animate-spin" /> : 'Join Room'}
         </NeonButton>
 
         <button onClick={() => { setPhase('main'); setCodeError(null); setCodeInput(''); }}
@@ -621,10 +640,10 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
             style={{ background: 'rgba(0,255,204,0.12)' }}
           />
           <div
-            className="relative w-14 h-14 rounded-full flex items-center justify-center text-2xl"
+            className="relative w-14 h-14 rounded-full flex items-center justify-center"
             style={{ background: 'rgba(0,255,204,0.08)', border: '1px solid rgba(0,255,204,0.3)' }}
           >
-            ⏳
+            <Loader2 size={24} className="animate-spin" style={{ color: '#00ffcc' }} />
           </div>
         </div>
 
@@ -635,7 +654,7 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
           >
             Waiting for Opponent…
           </p>
-          <p className="text-white/40 text-xs font-mono mt-1">You are the Host · Playing as ✕</p>
+          <p className="text-white/40 text-xs font-mono mt-1">You are the Host · Playing as X</p>
         </div>
 
         {/* Private room code */}

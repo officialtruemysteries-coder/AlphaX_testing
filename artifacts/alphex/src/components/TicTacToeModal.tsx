@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronLeft, Zap } from 'lucide-react';
+import { X, ChevronLeft, Zap, Trophy } from 'lucide-react';
 import { TicTacToeGame, GameMode, Difficulty } from './TicTacToeGame';
 import { OnlineLobby } from './OnlineLobby';
 import { OnlineGame } from './OnlineGame';
@@ -56,11 +56,11 @@ function MiniBoard() {
 
 // ─── Difficulty options ───────────────────────────────────────────────────────
 const DIFFICULTY_OPTIONS: {
-  value: Difficulty; emoji: string; label: string; accent: string; accentFaint: string;
+  value: Difficulty; label: string; accent: string; accentFaint: string;
 }[] = [
-  { value: 'easy',   emoji: '🟢', label: 'Easy',   accent: '#22c55e', accentFaint: 'rgba(34,197,94,0.15)'  },
-  { value: 'normal', emoji: '🟡', label: 'Normal', accent: '#eab308', accentFaint: 'rgba(234,179,8,0.15)'  },
-  { value: 'hard',   emoji: '🔴', label: 'Hard',   accent: '#ef4444', accentFaint: 'rgba(239,68,68,0.15)'  },
+  { value: 'easy',   label: 'Easy',   accent: '#22c55e', accentFaint: 'rgba(34,197,94,0.15)'  },
+  { value: 'normal', label: 'Normal', accent: '#eab308', accentFaint: 'rgba(234,179,8,0.15)'  },
+  { value: 'hard',   label: 'Hard',   accent: '#ef4444', accentFaint: 'rgba(239,68,68,0.15)'  },
 ];
 
 // ─── Toast types ──────────────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ function BadgeToast({ badgeName }: { badgeName: string }) {
         pointerEvents: 'none',
       }}
     >
-      <span style={{ fontSize: 16, lineHeight: 1 }}>🏆</span>
+      <Trophy size={15} style={{ color: '#c084fc', filter: 'drop-shadow(0 0 6px rgba(192,132,252,0.6))', flexShrink: 0 }} />
       <span
         className="font-display font-bold text-sm tracking-widest uppercase"
         style={{ color: '#c084fc', textShadow: '0 0 12px rgba(192,132,252,0.7)' }}
@@ -462,19 +462,19 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
 
                     {([
                       {
-                        id: 'ai' as const, emoji: '🤖', label: 'Play vs AI',
+                        id: 'ai' as const, icon: '/assets/icons/icon_ai_bot.png', label: 'Play vs AI',
                         sub: 'Single player · Play with AI', accent: '#00ffcc',
                         bg: 'rgba(0,255,204,0.06)', bgH: 'rgba(0,255,204,0.11)',
                         border: 'rgba(0,255,204,0.2)', borderH: 'rgba(0,255,204,0.55)',
                       },
                       {
-                        id: 'pass-and-play' as const, emoji: '👥', label: 'Pass & Play',
+                        id: 'pass-and-play' as const, icon: '/assets/icons/icon_local_multiplayer.png', label: 'Pass & Play',
                         sub: '2 players · Same device', accent: '#8a2be2',
                         bg: 'rgba(138,43,226,0.06)', bgH: 'rgba(138,43,226,0.11)',
                         border: 'rgba(138,43,226,0.2)', borderH: 'rgba(138,43,226,0.55)',
                       },
                       {
-                        id: 'online' as const, emoji: '🌐', label: 'Online Multiplayer',
+                        id: 'online' as const, icon: '/assets/icons/icon_global_multiplayer.png', label: 'Online Multiplayer',
                         sub: 'Real-time · Play worldwide', accent: '#00ffcc',
                         bg: 'rgba(0,255,204,0.06)', bgH: 'rgba(0,255,204,0.11)',
                         border: 'rgba(0,255,204,0.2)', borderH: 'rgba(0,255,204,0.55)',
@@ -494,9 +494,15 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
                           (e.currentTarget as HTMLElement).style.background = opt.bg;
                         }}
                       >
-                        <div className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center text-2xl"
-                          style={{ background: `${opt.accent}14`, border: `1px solid ${opt.accent}33` }}>
-                          {opt.emoji}
+                        <div
+                          className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
+                          style={{ background: `${opt.accent}14`, border: `1px solid ${opt.accent}33`, padding: '10px' }}
+                        >
+                          <img
+                            src={opt.icon}
+                            alt={opt.label}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto', display: 'block' }}
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-display text-white font-bold tracking-widest uppercase text-sm mb-0.5">
@@ -532,9 +538,14 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
                           (e.currentTarget as HTMLElement).style.background = opt.accentFaint;
                         }}
                       >
-                        <div className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center text-2xl"
-                          style={{ background: `${opt.accent}14`, border: `1px solid ${opt.accent}33` }}>
-                          {opt.emoji}
+                        <div
+                          className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
+                          style={{ background: `${opt.accent}14`, border: `1px solid ${opt.accent}33` }}
+                        >
+                          <div
+                            className="w-4 h-4 rounded-full"
+                            style={{ background: opt.accent, boxShadow: `0 0 10px ${opt.accent}` }}
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-display font-bold tracking-widest uppercase text-base"

@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Game } from '../lib/gameData';
 import { TerminalModal } from './TerminalModal';
 import { TicTacToeModal } from './TicTacToeModal';
+import { SnakesAndLaddersModal } from './SnakesAndLaddersModal';
+import type { SLInitialPhase } from './SnakesAndLaddersModal';
+import { MiniSLBoard } from './SnakesAndLaddersModal';
 import { Terminal, Play } from 'lucide-react';
 
 interface GameCardProps {
@@ -10,6 +13,7 @@ interface GameCardProps {
 
 export function GameCard({ game }: GameCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [slInitialPhase, setSlInitialPhase] = useState<SLInitialPhase>('splash');
 
   // Generate a random-looking but deterministic gradient based on game title length and id
   const hue1 = (game.title.length * 15 + parseInt(game.id) * 30) % 360;
@@ -17,9 +21,16 @@ export function GameCard({ game }: GameCardProps) {
 
   // Tic-Tac-Toe gets a fixed neon cyan/purple gradient
   const isTicTacToe = game.id === 'ttt';
-  const bgStyle = isTicTacToe
+  const isSL = game.id === 'sl';
+
+  const bgStyle = isTicTacToe || isSL
     ? { background: 'linear-gradient(135deg, #0d1f1a 0%, #0b0c10 60%, #160d2a 100%)' }
     : { background: `linear-gradient(135deg, hsl(${hue1} 80% 20%), hsl(${hue2} 60% 10%))` };
+
+  const openSL = (phase: SLInitialPhase) => {
+    setSlInitialPhase(phase);
+    setIsModalOpen(true);
+  };
 
   return (
     <>
@@ -29,6 +40,7 @@ export function GameCard({ game }: GameCardProps) {
           transform: 'translate3d(0,0,0)',
           willChange: 'transform',
           ...(isTicTacToe && { borderColor: 'rgba(0,255,204,0.3)' }),
+          ...(isSL && { borderColor: 'rgba(0,255,204,0.3)' }),
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = 'translate3d(0,-4px,0) scale(1.01)';
@@ -62,6 +74,11 @@ export function GameCard({ game }: GameCardProps) {
                 {/* O bottom-right */}
                 <circle cx="100" cy="100" r="10" stroke="#8a2be2" strokeWidth="4" fill="none" style={{ filter: 'drop-shadow(0 0 4px #8a2be2)' }} />
               </svg>
+            </div>
+          ) : isSL ? (
+            /* Snakes & Ladders preview board */
+            <div className="opacity-70 group-hover:opacity-100 transition-opacity duration-500 w-24 h-24">
+              <MiniSLBoard />
             </div>
           ) : (
             <div className="opacity-50 group-hover:opacity-100 transition-opacity duration-500">
@@ -114,7 +131,55 @@ export function GameCard({ game }: GameCardProps) {
           </div>
 
           <div className="mt-auto">
-            {game.isPlayable ? (
+            {game.isPlayable && isSL ? (
+              /* Two-button layout for Snakes & Ladders */
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => openSL('ai-count')}
+                  className="w-full py-2.5 px-4 flex items-center justify-center gap-2 rounded-md text-sm font-display tracking-widest uppercase transition-all duration-200 cursor-pointer"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(0,255,204,0.12), rgba(0,255,204,0.04))',
+                    border: '1px solid rgba(0,255,204,0.45)',
+                    color: '#00ffcc',
+                    textShadow: '0 0 8px rgba(0,255,204,0.5)',
+                    boxShadow: '0 0 16px rgba(0,255,204,0.08)',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.8)';
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 0 24px rgba(0,255,204,0.18)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.45)';
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(0,255,204,0.08)';
+                  }}
+                >
+                  <img src="/assets/icons/icon_ai_bot.png" alt="AI" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
+                  Play vs AI
+                </button>
+                <button
+                  onClick={() => openSL('pp-count')}
+                  className="w-full py-2.5 px-4 flex items-center justify-center gap-2 rounded-md text-sm font-display tracking-widest uppercase transition-all duration-200 cursor-pointer"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(138,43,226,0.1), rgba(138,43,226,0.03))',
+                    border: '1px solid rgba(138,43,226,0.45)',
+                    color: '#c084fc',
+                    textShadow: '0 0 8px rgba(138,43,226,0.5)',
+                    boxShadow: '0 0 16px rgba(138,43,226,0.08)',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(138,43,226,0.8)';
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 0 24px rgba(138,43,226,0.18)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(138,43,226,0.45)';
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(138,43,226,0.08)';
+                  }}
+                >
+                  <img src="/assets/icons/icon_local_multiplayer.png" alt="Local" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
+                  Pass &amp; Play
+                </button>
+              </div>
+            ) : game.isPlayable ? (
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="w-full py-2.5 px-4 flex items-center justify-center gap-2 rounded-md text-sm font-display tracking-widest uppercase transition-all duration-200 cursor-pointer"
@@ -155,8 +220,14 @@ export function GameCard({ game }: GameCardProps) {
         </div>
       </div>
 
-      {/* Modal — Tic-Tac-Toe gets its own modal, others get TerminalModal */}
-      {game.isPlayable ? (
+      {/* Modals */}
+      {isSL ? (
+        <SnakesAndLaddersModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          initialPhase={slInitialPhase}
+        />
+      ) : game.isPlayable ? (
         <TicTacToeModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
       ) : (
         <TerminalModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />

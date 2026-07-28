@@ -7,6 +7,8 @@ export interface Game {
   expectedQuarter: string;
   isApp?: boolean;
   isPlayable?: boolean;
+  /** Whether the card shows two separate mode buttons (Play vs AI / Pass & Play). */
+  twoModes?: boolean;
   /** Single characters that should match this game (explicit opt-in only). */
   searchChars?: string[];
   /** Extended phrase/keyword list for smart search (multi-char queries). */
@@ -39,6 +41,23 @@ export const GAMES: Game[] = [
       'mind game', 'strategy game', 'vs ai', 'bot game',
     ],
     searchSubtitle: 'Classic Board Game',
+  },
+  {
+    id: "sl",
+    title: "Snakes & Ladders",
+    categories: ["Single Player", "Multiplayer", "Pass & Play", "Arcade", "Strategy"],
+    expectedQuarter: "Now",
+    isPlayable: true,
+    twoModes: true,
+    searchChars: ['s', 'l'],
+    searchTerms: [
+      'snakes and ladders', 'snakes & ladders', 'snake and ladder',
+      'snakes', 'ladders', 'snake', 'ladder',
+      's&l', 'sl', 'saap sidhi', 'saap sidi',
+      'board game', 'dice game', 'vs ai', 'pass and play',
+      'local multiplayer', 'neon snakes', 'cyber snakes',
+    ],
+    searchSubtitle: 'Neon Edition',
   },
   { id: "1",  title: "NeonStrike Online",      categories: ["Multiplayer", "Shooting"],                  expectedQuarter: "Q3 2026" },
   { id: "2",  title: "Cyber Nexus",             categories: ["Single Player", "Action"],                  expectedQuarter: "Q3 2026" },

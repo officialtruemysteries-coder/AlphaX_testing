@@ -10,9 +10,9 @@ interface HowToGuideModalProps {
 type TabId = 'what-is' | 'tictactoe' | 'profile';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'what-is',   label: 'WHAT IS ALPHA X',         icon: <BookOpen  size={11} /> },
-  { id: 'tictactoe', label: 'TIC-TAC-TOE & GAMEPLAY',  icon: <Gamepad2  size={11} /> },
-  { id: 'profile',   label: 'PROFILE, XP & RANKS',     icon: <Trophy    size={11} /> },
+  { id: 'what-is',   label: 'WHAT IS ALPHA X',    icon: <BookOpen  size={11} /> },
+  { id: 'tictactoe', label: 'GAMES & APPS',        icon: <Gamepad2  size={11} /> },
+  { id: 'profile',   label: 'PROFILE SYSTEM & ETC', icon: <Trophy   size={11} /> },
 ];
 
 export function HowToGuideModal({ isOpen, onClose }: HowToGuideModalProps) {
@@ -365,6 +365,48 @@ const RANK_TABLE: { xp: string; rank: string; range: string }[] = [
 function TabProfile() {
   return (
     <div>
+      <GuideSection label="Profile Customization">
+        <div className="space-y-3.5">
+          <GuideEntry
+            term="Display Name"
+            text="Your display name can be edited at any time from the Profile page by selecting the edit icon next to your current name. Changes take effect immediately across all platform surfaces including the navigation bar, game lobbies, and online player cards."
+          />
+          <GuideEntry
+            term="Character Limits"
+            text="Display names must be between 1 and 15 characters. Names that consist entirely of spaces are rejected. The 15-character hard cap is enforced at input — no additional characters can be entered beyond the limit."
+          />
+          <GuideEntry
+            term="Profile Picture / Avatar"
+            text="You can set or change your profile picture from the Profile page using the camera icon on your avatar card. Upload any image from your device and it will be cropped and displayed as your active profile picture. Your avatar appears on your profile card and is stored locally in your browser."
+          />
+          <GuideEntry
+            term="Name Availability"
+            text="Display names are checked for conflicts against other active sessions on the platform. If a chosen name is already in use, you will be prompted to select an alternative. Editing your name does not reset or affect your XP, rank, badges, or session history."
+          />
+        </div>
+      </GuideSection>
+
+      <GuideSection label="Browser Storage & Account Mechanics">
+        <div className="space-y-3.5">
+          <GuideEntry
+            term="How Progress is Saved"
+            text="All player progress — including XP, unlocked badges, current rank, equipped badge, display name, avatar, daily streak, and session count — is saved locally in your browser's storage (localStorage). No account registration or server-side profile is required."
+          />
+          <GuideEntry
+            term="Progress is Device & Browser Bound"
+            text="Your progress is tied exclusively to the specific browser and device where you earned it. Switching to a different browser on the same device, clearing your browser's site data or cache, or using a different device will start a completely fresh session with a new Player ID and zero XP."
+          />
+          <GuideEntry
+            term="No Cloud Sync"
+            text="There is currently no cross-device sync or account export feature. To preserve your progress, avoid clearing browser data for the ALPHEX site and continue playing on the same browser where your session was started."
+          />
+          <GuideEntry
+            term="Session Tracking"
+            text="Your profile tracks the total number of sessions opened on the platform. This counter increments once per browser tab on load and is visible on your Profile page as part of your session history."
+          />
+        </div>
+      </GuideSection>
+
       <GuideSection label="XP Progression System">
         <div className="space-y-3.5">
           <GuideEntry
@@ -380,8 +422,8 @@ function TabProfile() {
             text="Ranks advance automatically and instantly when your XP total crosses the next bracket boundary. There is no delay, cooldown, or manual action required — the new rank takes effect the moment the threshold is reached."
           />
           <GuideEntry
-            term="No Downgrading"
-            text="Ranks are permanently tied to your total XP earned. Standard users have no mechanism to lose a rank. Once a threshold is crossed, the associated rank is locked in."
+            term="Ranks are Permanent Milestones"
+            text="Ranks are permanently tied to your total XP earned and cannot be manually downgraded or upgraded without reaching the corresponding XP target. Once a rank threshold is crossed, the associated rank is locked in for all standard users. There is no mechanism for a standard player to lose or lower their rank."
           />
         </div>
       </GuideSection>
@@ -436,37 +478,16 @@ function TabProfile() {
             'PERFECT WEEK — Earned by logging in and playing on 7 consecutive calendar days.',
           ]} />
           <GuideEntry
-            term="Badge Unlock Audio"
-            text="Unlocking a new badge triggers a dedicated sparkle audio feedback effect to confirm the achievement. This sound fires once per new badge and does not repeat on subsequent visits."
+            term="Equipping & Swapping Badges"
+            text="Unlocked badges can be equipped or swapped at any time directly from the Badges section on your Profile page. If you have unlocked more than one badge, select your preferred badge to set it as your active displayed badge. The equipped badge appears on your profile card and in your public player showcase."
           />
           <GuideEntry
-            term="Equipping Badges"
-            text="If you have unlocked more than one badge, you can choose which one is displayed on your active profile. Navigate to the Badges section on your Profile page and select your preferred badge to equip it."
+            term="Badge Unlock Audio"
+            text="Unlocking a new badge triggers a dedicated sparkle audio feedback effect to confirm the achievement. This sound fires once per new badge unlock and does not repeat on subsequent visits."
           />
           <GuideEntry
             term="In-Game Display"
             text="During active gameplay, only your display name and current rank title are shown to other players. Badges are intentionally excluded from the in-game UI to keep the interface clean and focused."
-          />
-        </div>
-      </GuideSection>
-
-      <GuideSection label="Profile Settings">
-        <div className="space-y-3.5">
-          <GuideEntry
-            term="Display Name"
-            text="Your display name can be edited at any time from the Profile page. Changes take effect immediately across all platform surfaces. Editing your name does not affect your XP, rank, badges, or session history."
-          />
-          <GuideEntry
-            term="Profile Avatar"
-            text="You can upload a custom profile image from the Profile page. The avatar appears on your profile card and is stored locally in your browser."
-          />
-          <GuideEntry
-            term="Session Counter"
-            text="Your profile tracks the total number of sessions you have opened on the platform. This counter increments once per browser tab on load and is visible on your Profile page."
-          />
-          <GuideEntry
-            term="Data Storage"
-            text="All profile data — including XP, rank, badges, display name, avatar, and streak — is stored in your browser's localStorage. Clearing browser data or switching to a different browser will result in a fresh profile being generated."
           />
         </div>
       </GuideSection>

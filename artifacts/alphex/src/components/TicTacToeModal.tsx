@@ -129,7 +129,7 @@ function BadgeToast({ badgeName }: { badgeName: string }) {
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
-  const [phase,      setPhase]      = useState<Phase>('splash');
+  const [phase,      setPhase]      = useState<Phase>('mode-select');
   const [mode,       setMode]       = useState<GameMode | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
 
@@ -155,11 +155,11 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
   }, []);
 
   const showXpToast = useCallback((gained: number) => {
-    pushToast({ type: 'xp', gained });
+    pushToast({ type: 'xp', gained } as Omit<ToastItem, 'id'>);
     playXPChime(); // soft sparkle on every XP award
   }, [pushToast, playXPChime]);
   const showBadgeToast = useCallback((badgeName: string) => {
-    pushToast({ type: 'badge', badgeName });
+    pushToast({ type: 'badge', badgeName } as Omit<ToastItem, 'id'>);
     playBadgeUnlock(); // sparkle chime on badge unlock
   }, [pushToast, playBadgeUnlock]);
 
@@ -258,8 +258,8 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
 
   // ── Navigation ────────────────────────────────────────────────────────────
 
-  const resetToSplash = useCallback(() => {
-    setPhase('splash');
+  const resetToModeSelect = useCallback(() => {
+    setPhase('mode-select');
     setMode(null);
     setDifficulty('normal');
     setOnlineGameState(null);
@@ -272,11 +272,11 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
       setOnlineGameState(null);
     }
     onClose();
-    setTimeout(resetToSplash, 320);
-  }, [phase, awardGameXP, onClose, resetToSplash]);
+    setTimeout(resetToModeSelect, 320);
+  }, [phase, awardGameXP, onClose, resetToModeSelect]);
 
   const handleBack = useCallback(() => {
-    if (phase === 'mode-select')        { setPhase('splash'); }
+    if (phase === 'mode-select')        { /* mode-select is the root — nothing to go back to */ }
     else if (phase === 'difficulty-select') { setPhase('mode-select'); }
     else if (phase === 'playing')       {
       awardGameXP();
@@ -337,7 +337,7 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
     setPhase('mode-select');
   }, []);
 
-  const showBack = phase !== 'splash' && !(phase === 'online' && onlineGameState !== null);
+  const showBack = phase !== 'mode-select' && !(phase === 'online' && onlineGameState !== null);
   const headerTitle = phase === 'online' ? 'Online Multiplayer' : 'Tic-Tac-Toe';
 
   return (
@@ -422,36 +422,6 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
               {/* ── Body ───────────────────────────────────────────────── */}
               <div className="overflow-y-auto flex-1 px-5 pb-5 pt-4" style={{ scrollbarWidth: 'none' }}>
 
-                {/* SPLASH */}
-                {phase === 'splash' && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col items-center gap-5">
-                    <div className="w-full rounded-2xl overflow-hidden flex items-center justify-center"
-                      style={{
-                        background: 'radial-gradient(ellipse at center, #0d1f1a 0%, #0b0c10 100%)',
-                        border: '1px solid rgba(0,255,204,0.15)', aspectRatio: '16/9', maxHeight: 180, padding: '8%',
-                      }}>
-                      <MiniBoard />
-                    </div>
-                    <p className="text-center text-white/50 text-sm font-sans leading-relaxed">
-                      Align 3 X's or O's in a row to win. Play with AI, enjoy Pass &amp; Play with 2 players,
-                      or challenge players worldwide in real-time Online Multiplayer.
-                    </p>
-                    <button
-                      onClick={() => setPhase('mode-select')}
-                      className="w-full py-3.5 rounded-xl font-display tracking-widest uppercase text-sm font-bold
-                                 transition-all duration-200 cursor-pointer"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(0,255,204,0.15), rgba(0,255,204,0.05))',
-                        border: '1px solid rgba(0,255,204,0.5)', color: '#00ffcc',
-                        textShadow: '0 0 10px rgba(0,255,204,0.6)', boxShadow: '0 0 20px rgba(0,255,204,0.1)',
-                      }}
-                    >
-                      ▶ &nbsp; Play Now
-                    </button>
-                  </motion.div>
-                )}
-
                 {/* MODE SELECT */}
                 {phase === 'mode-select' && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
@@ -469,7 +439,7 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
                       },
                       {
                         id: 'pass-and-play' as const, icon: '/assets/icons/icon_local_multiplayer.png', label: 'Pass & Play',
-                        sub: '2 players · Same device', accent: '#8a2be2',
+                        sub: '2 players · Local multiplayer', accent: '#8a2be2',
                         bg: 'rgba(138,43,226,0.06)', bgH: 'rgba(138,43,226,0.11)',
                         border: 'rgba(138,43,226,0.2)', borderH: 'rgba(138,43,226,0.55)',
                       },

@@ -9,10 +9,14 @@ import {
 } from '../lib/playerProfile';
 import type { BadgeId } from '../lib/playerProfile';
 import { useGameSounds } from '../hooks/useGameSounds';
+import { OnlineLobby } from './OnlineLobby';
+import { OnlineGame } from './OnlineGame';
+import { disconnectSocket } from '../lib/socket';
+import type { OnlineGameState } from '../lib/onlineTypes';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SLInitialPhase = 'ai-count' | 'pp-count' | 'splash';
+export type SLInitialPhase = 'ai-count' | 'pp-count' | 'splash' | 'online';
 
 interface SLModalProps {
   isOpen: boolean;
@@ -20,7 +24,7 @@ interface SLModalProps {
   initialPhase?: SLInitialPhase;
 }
 
-type Phase = 'splash' | 'ai-count' | 'ai-difficulty' | 'pp-count' | 'playing' | 'game-over';
+type Phase = 'splash' | 'ai-count' | 'ai-difficulty' | 'pp-count' | 'playing' | 'game-over' | 'online';
 type Difficulty = 'easy' | 'normal' | 'hard';
 
 interface Player {
@@ -527,6 +531,9 @@ export function SnakesAndLaddersModal({ isOpen, onClose, initialPhase = 'splash'
   const [ppCount, setPpCount] = useState(2);
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
 
+  // Online game state
+  const [onlineGameState, setOnlineGameState] = useState<OnlineGameState | null>(null);
+
   // Game state
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -617,21 +624,46 @@ export function SnakesAndLaddersModal({ isOpen, onClose, initialPhase = 'splash'
     }
   }, [showXpToast, showBadgeToast]);
 
+  // Online callbacks
+  const handleOnlineGameStart = useCallback((state: OnlineGameState) => {
+    setOnlineGameState(state);
+  }, []);
+  const handleOnlineGameLeave = useCallback(() => {
+    setOnlineGameState(null);
+  }, []);
+  const handleOnlineGameEnd = useCallback((result: { gained: number; newBadges: BadgeId[] }) => {
+    if (result.gained > 0) showXpToast(result.gained);
+    for (const id of result.newBadges) showBadgeToast(BADGE_DEFS[id].name);
+  }, [showXpToast, showBadgeToast]);
+  const handleOnlineBack = useCallback(() => {
+    disconnectSocket();
+    setOnlineGameState(null);
+    setPhase('splash');
+  }, []);
+
   const handleClose = useCallback(() => {
     if (phase === 'playing' && !gameOverPhase) awardXP();
+    if (phase === 'online') { disconnectSocket(); setOnlineGameState(null); }
     onClose();
     setTimeout(() => {
       setPhase(initialPhase as Phase);
       setWinner(null); setGameOverPhase(false);
       setPlayers([]); setCurrentIdx(0);
       setIsAnimating(false); setBonusRoll(false); setStatusMsg('');
+      setOnlineGameState(null);
     }, 320);
   }, [phase, gameOverPhase, awardXP, onClose, initialPhase]);
 
   const handleBack = useCallback(() => {
     if (phase === 'ai-difficulty') setPhase('ai-count');
-    else if (phase === 'ai-count') setPhase(initialPhase === 'ai-count' ? 'splash' : (initialPhase as Phase));
-    else if (phase === 'pp-count') setPhase(initialPhase === 'pp-count' ? 'splash' : (initialPhase as Phase));
+    else if (phase === 'ai-count') setPhase('splash');
+    else if (phase === 'pp-count') setPhase('splash');
+    else if (phase === 'online') {
+      if (!onlineGameState) {
+        disconnectSocket();
+        setPhase('splash');
+      }
+    }
     else if (phase === 'playing' || phase === 'game-over') {
       if (phase === 'playing') awardXP();
       setWinner(null); setGameOverPhase(false);
@@ -640,7 +672,7 @@ export function SnakesAndLaddersModal({ isOpen, onClose, initialPhase = 'splash'
       setPhase('splash');
     }
     else setPhase('splash');
-  }, [phase, initialPhase, awardXP]);
+  }, [phase, onlineGameState, awardXP]);
 
   // ── Game setup ──────────────────────────────────────────────────────────────
 
@@ -855,13 +887,14 @@ export function SnakesAndLaddersModal({ isOpen, onClose, initialPhase = 'splash'
   // ── Render ──────────────────────────────────────────────────────────────────
 
   const currentPlayer = players[currentIdx];
-  const showBack = phase !== 'splash' && phase !== 'playing' && phase !== 'game-over';
+  const showBack = phase !== 'splash' && phase !== 'playing' && phase !== 'game-over'
+    && !(phase === 'online' && onlineGameState !== null);
   const canRoll = phase === 'playing' && !isRolling && !isAnimating && currentPlayer && !currentPlayer.isAI && !gameOverPhase;
 
   const headerTitle =
     phase === 'ai-count' || phase === 'ai-difficulty' ? 'vs AI Setup' :
     phase === 'pp-count' ? 'Pass & Play Setup' :
-    phase === 'playing' || phase === 'game-over' ? 'Snakes & Ladders' :
+    phase === 'online' ? 'Online Multiplayer' :
     'Snakes & Ladders';
 
   return (
@@ -942,43 +975,63 @@ export function SnakesAndLaddersModal({ isOpen, onClose, initialPhase = 'splash'
               {/* Body */}
               <div className="overflow-y-auto flex-1 px-4 pb-4 pt-3" style={{ scrollbarWidth: 'none' }}>
 
-                {/* ── SPLASH ──────────────────────────────────────────────── */}
+                {/* ── SPLASH / MODE SELECT ─────────────────────────────── */}
                 {phase === 'splash' && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col items-center gap-5">
-                    <div className="w-full rounded-2xl overflow-hidden flex items-center justify-center"
-                      style={{
-                        background: 'radial-gradient(ellipse at center, #0d1f1a 0%, #0b0c10 100%)',
-                        border: '1px solid rgba(0,255,204,0.15)', aspectRatio: '16/9', maxHeight: 180, padding: '8%',
-                      }}>
-                      <MiniSLBoard />
-                    </div>
-                    <p className="text-center text-white/50 text-sm font-sans leading-relaxed">
-                      Roll the dice, climb ladders, and dodge snakes on a 100-tile neon cyberpunk board.
-                      Race to tile 100 by exact roll to win!
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                    className="flex flex-col gap-4">
+                    <p className="text-center text-white/40 font-mono text-xs uppercase tracking-widest mb-1">
+                      Select Game Mode
                     </p>
-                    <div className="w-full flex flex-col gap-3">
-                      <button onClick={() => setPhase('ai-count')}
-                        className="w-full py-3.5 flex items-center gap-3 px-5 rounded-xl font-display tracking-widest uppercase text-sm font-bold transition-all duration-200 cursor-pointer"
-                        style={{
-                          background: 'linear-gradient(135deg, rgba(0,255,204,0.12), rgba(0,255,204,0.05))',
-                          border: '1px solid rgba(0,255,204,0.45)', color: '#00ffcc',
-                          textShadow: '0 0 10px rgba(0,255,204,0.6)',
-                        }}>
-                        <img src="/assets/icons/icon_ai_bot.png" alt="AI" style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 }} />
-                        Play vs AI
+
+                    {([
+                      {
+                        id: 'ai-count' as const, icon: '/assets/icons/icon_ai_bot.png', label: 'Play vs AI',
+                        sub: 'Solo · 1v1 up to 1v6 vs AI', accent: '#00ffcc',
+                        bg: 'rgba(0,255,204,0.06)', bgH: 'rgba(0,255,204,0.11)',
+                        border: 'rgba(0,255,204,0.2)', borderH: 'rgba(0,255,204,0.55)',
+                      },
+                      {
+                        id: 'pp-count' as const, icon: '/assets/icons/icon_local_multiplayer.png', label: 'Pass & Play',
+                        sub: '2–6 players · Local multiplayer', accent: '#8a2be2',
+                        bg: 'rgba(138,43,226,0.06)', bgH: 'rgba(138,43,226,0.11)',
+                        border: 'rgba(138,43,226,0.2)', borderH: 'rgba(138,43,226,0.55)',
+                      },
+                      {
+                        id: 'online' as const, icon: '/assets/icons/icon_global_multiplayer.png', label: 'Online Multiplayer',
+                        sub: 'Real-time · Play worldwide', accent: '#00ffcc',
+                        bg: 'rgba(0,255,204,0.06)', bgH: 'rgba(0,255,204,0.11)',
+                        border: 'rgba(0,255,204,0.2)', borderH: 'rgba(0,255,204,0.55)',
+                      },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.id}
+                        onClick={() => setPhase(opt.id)}
+                        className="group flex items-center gap-4 w-full p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer"
+                        style={{ background: opt.bg, border: `1px solid ${opt.border}` }}
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLElement).style.borderColor = opt.borderH;
+                          (e.currentTarget as HTMLElement).style.background = opt.bgH;
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLElement).style.borderColor = opt.border;
+                          (e.currentTarget as HTMLElement).style.background = opt.bg;
+                        }}
+                      >
+                        <div
+                          className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center"
+                          style={{ background: `${opt.accent}14`, border: `1px solid ${opt.accent}33`, padding: '4px' }}
+                        >
+                          <img src={opt.icon} alt={opt.label} loading="eager" className="icon-crisp" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-display text-white font-bold tracking-widest uppercase text-sm mb-0.5">
+                            {opt.label}
+                          </div>
+                          <div className="text-white/40 text-xs font-sans leading-snug">{opt.sub}</div>
+                        </div>
+                        <span className="text-lg transition-colors shrink-0" style={{ color: `${opt.accent}80` }}>›</span>
                       </button>
-                      <button onClick={() => setPhase('pp-count')}
-                        className="w-full py-3.5 flex items-center gap-3 px-5 rounded-xl font-display tracking-widest uppercase text-sm font-bold transition-all duration-200 cursor-pointer"
-                        style={{
-                          background: 'linear-gradient(135deg, rgba(138,43,226,0.12), rgba(138,43,226,0.05))',
-                          border: '1px solid rgba(138,43,226,0.45)', color: '#c084fc',
-                          textShadow: '0 0 10px rgba(138,43,226,0.6)',
-                        }}>
-                        <img src="/assets/icons/icon_local_multiplayer.png" alt="Local" style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 }} />
-                        Pass &amp; Play
-                      </button>
-                    </div>
+                    ))}
                   </motion.div>
                 )}
 
@@ -1097,6 +1150,24 @@ export function SnakesAndLaddersModal({ isOpen, onClose, initialPhase = 'splash'
                       }}>
                       ▶ Start Game
                     </button>
+                  </motion.div>
+                )}
+
+                {/* ── ONLINE MULTIPLAYER ───────────────────────────────────── */}
+                {phase === 'online' && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                    {onlineGameState === null ? (
+                      <OnlineLobby
+                        onGameStart={handleOnlineGameStart}
+                        onBack={handleOnlineBack}
+                      />
+                    ) : (
+                      <OnlineGame
+                        initialState={onlineGameState}
+                        onLeave={handleOnlineGameLeave}
+                        onGameEnd={handleOnlineGameEnd}
+                      />
+                    )}
                   </motion.div>
                 )}
 

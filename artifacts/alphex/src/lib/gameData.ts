@@ -3,6 +3,7 @@ export type GameCategory = "All Games" | "Multiplayer" | "Single Player" | "Shoo
 export interface Game {
   id: string;
   title: string;
+  description?: string;
   categories: GameCategory[];
   expectedQuarter: string;
   isApp?: boolean;
@@ -26,6 +27,7 @@ export const GAMES: Game[] = [
   {
     id: "ttt",
     title: "Tic-Tac-Toe",
+    description: "Classic 3x3 strategy board game! Play 1v1 vs AI, Pass & Play local multiplayer, or join Online Multiplayer.",
     categories: ["Single Player", "Multiplayer", "Pass & Play", "Puzzle", "Arcade", "Strategy"],
     expectedQuarter: "Now",
     isPlayable: true,
@@ -45,7 +47,8 @@ export const GAMES: Game[] = [
   {
     id: "sl",
     title: "Snakes & Ladders",
-    categories: ["Single Player", "Multiplayer", "Pass & Play", "Arcade", "Strategy"],
+    description: "Roll the dice, climb ladders, and dodge snakes in Snakes & Ladders! Play solo 1v1 to 1v6 vs AI, Pass & Play with 2 to 6 players, or join Online Multiplayer.",
+    categories: ["Single Player", "Multiplayer", "Pass & Play", "Puzzle", "Arcade", "Strategy"],
     expectedQuarter: "Now",
     isPlayable: true,
     twoModes: true,

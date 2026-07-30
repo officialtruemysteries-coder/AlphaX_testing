@@ -122,6 +122,12 @@ export function GameCard({ game }: GameCardProps) {
             {game.title}
           </h3>
 
+          {game.description && (
+            <p className="text-xs text-white/40 font-sans leading-relaxed mb-3 line-clamp-2">
+              {game.description}
+            </p>
+          )}
+
           <div className="flex flex-wrap gap-2 mb-4">
             {game.categories.filter(c => c !== 'All Games').map(cat => (
               <span key={cat} className="text-xs bg-black/40 text-muted-foreground px-2 py-1 rounded border border-border/50">
@@ -132,7 +138,7 @@ export function GameCard({ game }: GameCardProps) {
 
           <div className="mt-auto">
             {game.isPlayable && isSL ? (
-              /* Two-button layout for Snakes & Ladders */
+              /* Three-button layout for Snakes & Ladders */
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => openSL('ai-count')}
@@ -177,6 +183,28 @@ export function GameCard({ game }: GameCardProps) {
                 >
                   <img src="/assets/icons/icon_local_multiplayer.png" alt="Local" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
                   Pass &amp; Play
+                </button>
+                <button
+                  onClick={() => openSL('online')}
+                  className="w-full py-2.5 px-4 flex items-center justify-center gap-2 rounded-md text-sm font-display tracking-widest uppercase transition-all duration-200 cursor-pointer"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(0,255,204,0.06), rgba(0,255,204,0.02))',
+                    border: '1px solid rgba(0,255,204,0.3)',
+                    color: '#00ffcc',
+                    textShadow: '0 0 8px rgba(0,255,204,0.4)',
+                    boxShadow: '0 0 12px rgba(0,255,204,0.06)',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.7)';
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 0 20px rgba(0,255,204,0.14)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.3)';
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 0 12px rgba(0,255,204,0.06)';
+                  }}
+                >
+                  <img src="/assets/icons/icon_global_multiplayer.png" alt="Online" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
+                  Online Multiplayer
                 </button>
               </div>
             ) : game.isPlayable ? (

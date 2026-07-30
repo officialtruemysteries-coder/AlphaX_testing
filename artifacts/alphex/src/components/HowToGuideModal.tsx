@@ -266,83 +266,115 @@ function TabWhatIsAlphaX() {
   );
 }
 
-// ─── Tab 2: TIC-TAC-TOE & GAMEPLAY GUIDE ─────────────────────────────────────
+// ─── Tab 2: GAMES & APPS GUIDE ───────────────────────────────────────────────
 
 function TabTicTacToe() {
   return (
     <div>
-      <GuideSection label="Game Overview">
+      {/* ── TIC-TAC-TOE ──────────────────────────────────────────────────── */}
+      <div
+        className="mb-6 pb-1"
+        style={{ borderBottom: '2px solid rgba(0,255,204,0.12)' }}
+      >
+        <h3
+          className="font-display text-sm font-bold uppercase tracking-widest mb-4"
+          style={{ color: '#00ffcc', textShadow: '0 0 10px rgba(0,255,204,0.35)' }}
+        >
+          Tic-Tac-Toe
+        </h3>
+
+        <GuideSection label="Overview">
+          <GuideEntry
+            term="Classic 3×3 Strategy"
+            text="Classic 3x3 grid strategy game where players take turns marking spaces. ALPHEX Tic-Tac-Toe features a neon-cyberpunk aesthetic, voice announcements, and three distinct play modes."
+          />
+        </GuideSection>
+
+        <GuideSection label="Modes">
+          <div className="space-y-3.5">
+            <GuideEntry
+              term="1v1 AI Mode"
+              text="Single-player vs AI. Three difficulty levels:"
+            />
+            <BulletList items={[
+              'Easy — AI plays randomly. Best for new players.',
+              'Normal — AI mixes random moves with reactive blocking. A balanced challenge.',
+              'Hard — AI uses optimal minimax strategy and will never lose.',
+            ]} />
+            <GuideEntry
+              term="Pass & Play"
+              text="Local two-player mode on the same device. Two players take turns on the same screen."
+            />
+            <GuideEntry
+              term="Online Multiplayer"
+              text="Real-time networked play against another player worldwide."
+            />
+            <BulletList items={[
+              'Browse Public Rooms — Find and join open public game rooms.',
+              'Create Public Room — Host a public room anyone can join.',
+              'Create Private Room — Get a unique AlphaX Room Code to share.',
+              'Join Room via AlphaX Room Code — Enter a code to join a private room.',
+            ]} />
+          </div>
+        </GuideSection>
+      </div>
+
+      {/* ── SNAKES & LADDERS ─────────────────────────────────────────────── */}
+      <div className="mb-4">
+        <h3
+          className="font-display text-sm font-bold uppercase tracking-widest mb-4"
+          style={{ color: '#00ffcc', textShadow: '0 0 10px rgba(0,255,204,0.35)' }}
+        >
+          Snakes &amp; Ladders
+        </h3>
+
+        <GuideSection label="Overview">
+          <GuideEntry
+            term="Neon Edition"
+            text="Roll the dice, move your piece, climb ladders to skip ahead, and dodge snakes on your way to victory across a dynamic neon 100-tile board. Race to tile 100 by exact roll to win."
+          />
+        </GuideSection>
+
+        <GuideSection label="Game Modes & Features">
+          <div className="space-y-3.5">
+            <GuideEntry
+              term="VS AI"
+              text="Play solo from 1v1 up to 1v6 with selectable AI difficulties:"
+            />
+            <BulletList items={[
+              'Easy — Bots roll unluckily. You have the edge.',
+              'Normal — Pure random dice. Anyone can win.',
+              'Hard — Bots roll luckily. You have the challenge.',
+            ]} />
+            <GuideEntry
+              term="Pass & Play"
+              text="Local multiplayer for 2 to 6 players. All players share the same device and take turns rolling."
+            />
+            <GuideEntry
+              term="Online Multiplayer"
+              text="Real-time networked play against players worldwide."
+            />
+            <BulletList items={[
+              'Browse Public Rooms — Find and join open public game rooms.',
+              'Create Public Room — Host a room anyone can join.',
+              'Create Private Room — Generate a unique AlphaX Room Code to share.',
+              'Join Room via AlphaX Room Code — Enter a code to join a private room.',
+            ]} />
+          </div>
+        </GuideSection>
+      </div>
+
+      <GuideSection label="XP & Scoring">
         <div className="space-y-3.5">
           <GuideEntry
-            term="Classic Strategy, Reimagined"
-            text="ALPHEX Tic-Tac-Toe is a reimagined take on the classic 3x3 strategy game, featuring a neon-cyberpunk visual aesthetic, custom voice announcements, and three distinct play modes."
+            term="Base XP"
+            text="Every completed session awards XP regardless of outcome. Wins, losses, and draws all count toward progression."
           />
           <GuideEntry
-            term="Audio Feedback"
-            text="Every move, win, loss, and draw is accompanied by synthesized in-game sound effects. Match outcomes trigger distinct voice announcements generated via ElevenLabs synthesis. Audio runs independently per session and does not interfere with system sound settings."
+            term="Engagement Bonus"
+            text="Sessions lasting over 120 seconds qualify for an elevated XP range, rewarding longer play."
           />
         </div>
-      </GuideSection>
-
-      <GuideSection label="Game Modes">
-        <div className="space-y-3.5">
-          <GuideEntry
-            term="1. Play vs AI"
-            text="Single-player mode where you compete against an AI opponent. Three difficulty levels are available:"
-          />
-          <BulletList items={[
-            'Easy — The AI plays randomly, choosing any available cell without strategic intent. Best for new players.',
-            'Normal — The AI mixes random moves with reactive blocking, occasionally threatening wins. A balanced challenge.',
-            'Hard — The AI uses optimal strategy (minimax logic) and will never lose. Intended for experienced players seeking a draw or studying patterns.',
-          ]} />
-
-          <GuideEntry
-            term="2. Pass & Play"
-            text="Local two-player mode on the same device. Two players take turns using the same screen. No network connection is required. Ideal for head-to-head play with someone nearby."
-          />
-
-          <GuideEntry
-            term="3. Online Multiplayer"
-            text="Real-time networked play against another player anywhere in the world. Key mechanics:"
-          />
-          <BulletList items={[
-            'Room Creation — One player creates a game room and receives a unique Room ID to share.',
-            'Room Join — The second player enters the Room ID to connect to the active session.',
-            'Isolated Player Cards — Each player sees their own isolated game card with their ID, role (X or O), and real-time move state.',
-            'Fair Play — Both players receive independent, server-validated turn management to prevent desync.',
-            'XP Calculation — XP rewards for online matches are calculated independently per player based on their individual match outcome.',
-          ]} />
-        </div>
-      </GuideSection>
-
-      <GuideSection label="Scoring & XP Mechanics">
-        <div className="space-y-3.5">
-          <GuideEntry
-            term="Match Outcomes"
-            text="Each completed match contributes to your XP total regardless of outcome. The base XP gain applies to all results — wins, losses, and draws — ensuring every session counts toward progression."
-          />
-          <GuideEntry
-            term="Win Bonus"
-            text="Winning a match provides an additional XP reward on top of the base session XP. The bonus is applied at match conclusion and reflected immediately on your Profile page."
-          />
-          <GuideEntry
-            term="Session Engagement Bonus"
-            text="Sessions lasting longer than 120 seconds qualify for an elevated XP range, rewarding sustained engagement with the platform."
-          />
-          <GuideEntry
-            term="Unique Player IDs"
-            text="Online multiplayer sessions assign each participant a unique, opaque session token for the duration of the match. This token isolates score attribution and prevents cross-player XP contamination in shared room environments."
-          />
-        </div>
-      </GuideSection>
-
-      <GuideSection label="Controls & Navigation">
-        <BulletList items={[
-          'Select a cell to place your mark (X or O).',
-          'The active player\'s turn is indicated above the board.',
-          'Completed matches display the result and offer a rematch option.',
-          'Exit at any time using the close or back controls without penalty to XP.',
-        ]} />
       </GuideSection>
     </div>
   );

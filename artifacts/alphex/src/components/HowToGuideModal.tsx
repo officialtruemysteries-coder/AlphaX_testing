@@ -10,13 +10,13 @@ interface HowToGuideModalProps {
 type TabId = 'what-is' | 'tictactoe' | 'profile';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'what-is',   label: 'WHAT IS ALPHA X',    icon: <BookOpen  size={11} /> },
-  { id: 'tictactoe', label: 'GAMES & APPS',        icon: <Gamepad2  size={11} /> },
-  { id: 'profile',   label: 'PROFILE SYSTEM & ETC', icon: <Trophy   size={11} /> },
+  { id: 'tictactoe', label: 'ALPHAX AI',            icon: <Gamepad2  size={11} /> },
+  { id: 'what-is',   label: 'WHAT IS ALPHA X',      icon: <BookOpen  size={11} /> },
+  { id: 'profile',   label: 'PROFILE SYSTEM & ETC', icon: <Trophy    size={11} /> },
 ];
 
 export function HowToGuideModal({ isOpen, onClose }: HowToGuideModalProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('what-is');
+  const [activeTab, setActiveTab] = useState<TabId>('tictactoe');
 
   return (
     <AnimatePresence>

@@ -122,12 +122,6 @@ export function GameCard({ game }: GameCardProps) {
             {game.title}
           </h3>
 
-          {game.description && (
-            <p className="text-xs text-white/40 font-sans leading-relaxed mb-3 line-clamp-2">
-              {game.description}
-            </p>
-          )}
-
           <div className="flex flex-wrap gap-2 mb-4">
             {game.categories.filter(c => c !== 'All Games').map(cat => (
               <span key={cat} className="text-xs bg-black/40 text-muted-foreground px-2 py-1 rounded border border-border/50">
@@ -137,77 +131,7 @@ export function GameCard({ game }: GameCardProps) {
           </div>
 
           <div className="mt-auto">
-            {game.isPlayable && isSL ? (
-              /* Three-button layout for Snakes & Ladders */
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => openSL('ai-count')}
-                  className="w-full py-2.5 px-4 flex items-center justify-center gap-2 rounded-md text-sm font-display tracking-widest uppercase transition-all duration-200 cursor-pointer"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(0,255,204,0.12), rgba(0,255,204,0.04))',
-                    border: '1px solid rgba(0,255,204,0.45)',
-                    color: '#00ffcc',
-                    textShadow: '0 0 8px rgba(0,255,204,0.5)',
-                    boxShadow: '0 0 16px rgba(0,255,204,0.08)',
-                  }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.8)';
-                    (e.currentTarget as HTMLElement).style.boxShadow = '0 0 24px rgba(0,255,204,0.18)';
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.45)';
-                    (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(0,255,204,0.08)';
-                  }}
-                >
-                  <img src="/assets/icons/icon_ai_bot.png" alt="AI" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
-                  Play vs AI
-                </button>
-                <button
-                  onClick={() => openSL('pp-count')}
-                  className="w-full py-2.5 px-4 flex items-center justify-center gap-2 rounded-md text-sm font-display tracking-widest uppercase transition-all duration-200 cursor-pointer"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(138,43,226,0.1), rgba(138,43,226,0.03))',
-                    border: '1px solid rgba(138,43,226,0.45)',
-                    color: '#c084fc',
-                    textShadow: '0 0 8px rgba(138,43,226,0.5)',
-                    boxShadow: '0 0 16px rgba(138,43,226,0.08)',
-                  }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(138,43,226,0.8)';
-                    (e.currentTarget as HTMLElement).style.boxShadow = '0 0 24px rgba(138,43,226,0.18)';
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(138,43,226,0.45)';
-                    (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(138,43,226,0.08)';
-                  }}
-                >
-                  <img src="/assets/icons/icon_local_multiplayer.png" alt="Local" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
-                  Pass &amp; Play
-                </button>
-                <button
-                  onClick={() => openSL('online')}
-                  className="w-full py-2.5 px-4 flex items-center justify-center gap-2 rounded-md text-sm font-display tracking-widest uppercase transition-all duration-200 cursor-pointer"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(0,255,204,0.06), rgba(0,255,204,0.02))',
-                    border: '1px solid rgba(0,255,204,0.3)',
-                    color: '#00ffcc',
-                    textShadow: '0 0 8px rgba(0,255,204,0.4)',
-                    boxShadow: '0 0 12px rgba(0,255,204,0.06)',
-                  }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.7)';
-                    (e.currentTarget as HTMLElement).style.boxShadow = '0 0 20px rgba(0,255,204,0.14)';
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,204,0.3)';
-                    (e.currentTarget as HTMLElement).style.boxShadow = '0 0 12px rgba(0,255,204,0.06)';
-                  }}
-                >
-                  <img src="/assets/icons/icon_global_multiplayer.png" alt="Online" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
-                  Online Multiplayer
-                </button>
-              </div>
-            ) : game.isPlayable ? (
+            {game.isPlayable ? (
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="w-full py-2.5 px-4 flex items-center justify-center gap-2 rounded-md text-sm font-display tracking-widest uppercase transition-all duration-200 cursor-pointer"

@@ -338,7 +338,10 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
   }, []);
 
   const showBack = phase !== 'mode-select' && !(phase === 'online' && onlineGameState !== null);
-  const headerTitle = phase === 'online' ? 'Online Multiplayer' : 'Tic-Tac-Toe';
+  const headerTitle =
+    phase === 'mode-select'    ? 'Select Game Mode' :
+    phase === 'online'         ? 'Online Multiplayer' :
+    'Tic-Tac-Toe';
 
   return (
     <>
@@ -433,19 +436,19 @@ export function TicTacToeModal({ isOpen, onClose }: TicTacToeModalProps) {
                     {([
                       {
                         id: 'ai' as const, icon: '/assets/icons/icon_ai_bot.png', label: 'Play vs AI',
-                        sub: 'Single player · Play with AI', accent: '#00ffcc',
+                        sub: 'Singleplayer - Play with AI', accent: '#00ffcc',
                         bg: 'rgba(0,255,204,0.06)', bgH: 'rgba(0,255,204,0.11)',
                         border: 'rgba(0,255,204,0.2)', borderH: 'rgba(0,255,204,0.55)',
                       },
                       {
                         id: 'pass-and-play' as const, icon: '/assets/icons/icon_local_multiplayer.png', label: 'Pass & Play',
-                        sub: '2 players · Local multiplayer', accent: '#8a2be2',
+                        sub: 'Local Multiplayer - Play with a friend', accent: '#8a2be2',
                         bg: 'rgba(138,43,226,0.06)', bgH: 'rgba(138,43,226,0.11)',
                         border: 'rgba(138,43,226,0.2)', borderH: 'rgba(138,43,226,0.55)',
                       },
                       {
                         id: 'online' as const, icon: '/assets/icons/icon_global_multiplayer.png', label: 'Online Multiplayer',
-                        sub: 'Real-time · Play worldwide', accent: '#00ffcc',
+                        sub: 'Create or join room code', accent: '#00ffcc',
                         bg: 'rgba(0,255,204,0.06)', bgH: 'rgba(0,255,204,0.11)',
                         border: 'rgba(0,255,204,0.2)', borderH: 'rgba(0,255,204,0.55)',
                       },

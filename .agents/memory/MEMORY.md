@@ -1,0 +1,1 @@
+- [Artifact imports](artifact-imports.md) — register the web artifact before restoring an imported app's source, because registration can replace scaffold files.

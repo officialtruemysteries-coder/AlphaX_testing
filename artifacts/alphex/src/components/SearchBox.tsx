@@ -4,10 +4,41 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Suggestion } from '../pages/DiscoverPage';
 
 // ── Web Speech API type augmentation ─────────────────────────────────────────
+// Speech recognition is not included in every TypeScript DOM lib version, so
+// keep the small surface used here local instead of relying on browser-specific
+// global declarations.
+interface AlphaSpeechRecognition {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  maxAlternatives: number;
+  onstart: (() => void) | null;
+  onresult: ((event: AlphaSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: AlphaSpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+interface AlphaSpeechRecognitionEvent {
+  resultIndex: number;
+  results: ArrayLike<{
+    isFinal: boolean;
+    0: { transcript: string };
+  }>;
+}
+
+interface AlphaSpeechRecognitionErrorEvent {
+  error: string;
+}
+
+type AlphaSpeechRecognitionConstructor = new () => AlphaSpeechRecognition;
+
 declare global {
   interface Window {
-    SpeechRecognition: new () => SpeechRecognition;
-    webkitSpeechRecognition: new () => SpeechRecognition;
+    SpeechRecognition: AlphaSpeechRecognitionConstructor;
+    webkitSpeechRecognition: AlphaSpeechRecognitionConstructor;
   }
 }
 
@@ -74,7 +105,7 @@ export function SearchBox({ value, onChange, suggestions = [], onSuggestionSelec
   const [toastMsg,         setToastMsg]          = useState<string | null>(null);
   const [showSuggestions,  setShowSuggestions]   = useState(false);
 
-  const recognitionRef  = useRef<SpeechRecognition | null>(null);
+  const recognitionRef  = useRef<AlphaSpeechRecognition | null>(null);
   const toastTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blurTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef      = useRef<HTMLDivElement>(null);
@@ -151,8 +182,8 @@ export function SearchBox({ value, onChange, suggestions = [], onSuggestionSelec
     }
 
     const SpeechAPI =
-      (window as unknown as { SpeechRecognition?: new () => SpeechRecognition }).SpeechRecognition ||
-      (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognition }).webkitSpeechRecognition;
+      (window as unknown as { SpeechRecognition?: AlphaSpeechRecognitionConstructor }).SpeechRecognition ||
+      (window as unknown as { webkitSpeechRecognition?: AlphaSpeechRecognitionConstructor }).webkitSpeechRecognition;
 
     if (!SpeechAPI) {
       showError('Microphone access is turned off. Please allow microphone access.');
@@ -168,7 +199,7 @@ export function SearchBox({ value, onChange, suggestions = [], onSuggestionSelec
 
     recognition.onstart = () => setIsListening(true);
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: AlphaSpeechRecognitionEvent) => {
       let interim = '';
       let final   = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -180,7 +211,7 @@ export function SearchBox({ value, onChange, suggestions = [], onSuggestionSelec
       if (final)   onChange(final);
     };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    recognition.onerror = (event: AlphaSpeechRecognitionErrorEvent) => {
       setIsListening(false);
       if (event.error === 'aborted') return; // user-cancelled — silent
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {

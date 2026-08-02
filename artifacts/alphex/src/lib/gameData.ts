@@ -26,7 +26,7 @@ export const CATEGORIES: GameCategory[] = [
 export const GAMES: Game[] = [
   {
     id: "ttt",
-    title: "Tic-Tac-Toe",
+    title: "TIC TAC TOE",
     description: "Classic 3x3 strategy board game! Play 1v1 vs AI, Pass & Play local multiplayer, or join Online Multiplayer.",
     categories: ["Single Player", "Multiplayer", "Pass & Play", "Puzzle", "Arcade", "Strategy"],
     expectedQuarter: "Now",

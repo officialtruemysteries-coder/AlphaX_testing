@@ -1,6 +1,7 @@
 kind = "web"
 previewPath = "/"
 title = "ALPHEX Gaming Hub"
+description = "A multiplayer browser gaming platform with local games, online rooms, discovery, player profiles, and real-time Socket.io play."
 version = "1.0.0"
 id = "artifacts/alphex"
 router = "path"

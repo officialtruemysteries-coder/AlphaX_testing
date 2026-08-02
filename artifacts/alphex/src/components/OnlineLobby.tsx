@@ -357,7 +357,7 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
           </div>
           <div className="flex-1">
             <div className="font-display text-white font-bold tracking-widest uppercase text-sm">Browse Public Rooms</div>
-            <div className="text-white/40 text-xs font-sans mt-0.5">See all open rooms worldwide</div>
+            <div className="text-white/40 text-xs font-sans mt-0.5">See all available rooms worldwide</div>
           </div>
           <span className="text-[#00ffcc]/40 group-hover:text-[#00ffcc] text-lg transition-colors">›</span>
         </button>
@@ -379,7 +379,7 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
           </div>
           <div className="flex-1">
             <div className="font-display text-white font-bold tracking-widest uppercase text-sm">Quick Join</div>
-            <div className="text-white/40 text-xs font-sans mt-0.5">Auto-match into an open room instantly</div>
+            <div className="text-white/40 text-xs font-sans mt-0.5">Auto-match into an available room instantly</div>
           </div>
           <span className="text-[#00ffcc]/40 group-hover:text-[#00ffcc] text-lg transition-colors">›</span>
         </button>
@@ -423,7 +423,7 @@ export function OnlineLobby({ onGameStart, onBack }: OnlineLobbyProps) {
           </div>
           <div className="flex-1">
             <div className="font-display text-white font-bold tracking-widest uppercase text-sm">Join via Room Code</div>
-            <div className="text-white/40 text-xs font-sans mt-0.5">Enter a friend's private room code</div>
+            <div className="text-white/40 text-xs font-sans mt-0.5">Enter a private room code</div>
           </div>
           <span className="text-[#8a2be2]/40 group-hover:text-[#8a2be2] text-lg transition-colors">›</span>
         </button>

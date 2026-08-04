@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRecentlyVisited } from '../hooks/useRecentlyVisited';
 import {
-  Terminal, Zap, Edit2, Check, Clock, Radio, Camera, ChevronDown, KeyRound, X, Eye, EyeOff,
+  Terminal, Zap, Check, Clock, Radio, Camera, ChevronDown, KeyRound, X, Eye, EyeOff,
 } from 'lucide-react';
 import { Link } from 'wouter';
 
@@ -375,25 +375,35 @@ export default function ProfilePage() {
                       className="bg-black/50 border border-primary text-white font-display text-2xl px-3 py-1 rounded focus:outline-none focus:box-shadow-neon-cyan max-w-[200px]"
                       maxLength={15}
                     />
-                    <button onClick={handleSave} className="text-green-400 hover:text-white p-1">
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      aria-label="Save username"
+                      className="text-green-400 hover:text-white p-1 cursor-pointer"
+                    >
                       <Check size={20} />
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 group">
+                  <button
+                    type="button"
+                    onClick={() => { setEditValue(playerData.username); setIsEditing(true); }}
+                    aria-label={`Edit username ${playerData.username}`}
+                    className="flex items-center gap-2 group min-w-0 text-left cursor-pointer"
+                  >
                     <h2
-                      className="font-display font-bold text-white tracking-wide leading-tight w-full text-center md:text-left break-words"
+                      className="font-display font-bold text-white tracking-wide leading-tight text-center md:text-left break-words"
                       style={{ fontSize: 'clamp(1.2rem, 4vw, 2rem)', margin: 0 }}
                     >
                       {playerData.username}
                     </h2>
-                    <button
-                      onClick={() => { setEditValue(playerData.username); setIsEditing(true); }}
-                      className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary p-1"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                  </div>
+                    <img
+                      src="/assets/pencil.png"
+                      alt=""
+                      aria-hidden="true"
+                      className="h-5 w-5 flex-shrink-0 object-contain opacity-60 transition-opacity duration-150 group-hover:opacity-100"
+                    />
+                  </button>
                 )}
               </div>
 
